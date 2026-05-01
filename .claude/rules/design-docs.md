@@ -1,0 +1,64 @@
+# Design Doc Standards
+
+## When to create a spec
+
+A committed design document is required when:
+
+- **The breakdown has 3+ beads** spanning multiple files or systems
+- **The change touches high-risk areas** (auth, billing, data-loss-risk, security) regardless of bead count
+
+A spec is NOT required for 1-2 bead work in low-risk areas. The bead description and ACs are sufficient.
+
+## What goes in the spec
+
+Location: `docs/specs/YYYY-MM-DD-<name>.md` in the repo being worked on. Committed to git.
+
+Content:
+- Architecture and component overview
+- Data flow and key interfaces
+- Trade-offs considered and decisions made (with reasoning)
+- Non-goals (what this initiative is explicitly NOT doing)
+- Risks and open questions
+
+The spec describes WHAT to build and WHY. It does not contain implementation code.
+
+### Template
+
+```markdown
+# [Initiative Name]
+
+**Date:** YYYY-MM-DD
+**Beads:** [epic ID or list of bead IDs]
+**Status:** Draft | Approved | Superseded
+
+## Architecture and component overview
+
+## Data flow and key interfaces
+
+## Trade-offs and decisions
+
+| Option | Pros | Cons | Decision |
+|--------|------|------|----------|
+
+## Non-goals
+
+## Risks and open questions
+
+- [ ] [Unresolved question or risk]
+```
+
+## What stays in beads
+
+- Acceptance criteria (observable outcomes)
+- File paths and implementation approach
+- Priority and dependencies
+
+The spec and beads are complementary. No duplication — the spec covers the big picture, beads cover the individual work items.
+
+## Linking
+
+When a design doc exists, link beads to it: `bd create --spec-id "docs/specs/2026-03-11-loading-ux.md" ...`
+
+## Why this matters
+
+Specs committed to git survive context loss, compaction, and new sessions. They're visible to any agent without reading scratchpad history. A bead can reference the spec for strategic context while remaining self-contained for execution.

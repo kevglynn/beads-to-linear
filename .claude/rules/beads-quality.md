@@ -1,0 +1,100 @@
+# Bead Quality Standards
+
+Every bead must be self-contained — a developer picking it up cold, without scratchpad or chat history, should have everything needed to understand, implement, and verify the work.
+
+## Required in every bead
+
+### Description (`--description`)
+
+- **What** the problem or feature is (not just the title restated)
+- **Where** in the codebase it applies (files, modules, or components)
+- **How** to approach the implementation (concrete steps, not vague direction)
+- **Why** it matters (context on the motivation or user impact)
+
+### Acceptance Criteria (`--acceptance`)
+
+Required for **bug**, **feature**, **task**, **story**, and **spike** beads. Epics require **Success Criteria** instead. Use `bd create --acceptance "..."`.
+
+| Type | Section name | What to specify |
+|------|-------------|-----------------|
+| bug | Acceptance Criteria | The fixed behavior |
+| feature/task/story | Acceptance Criteria | Observable outcomes |
+| spike | Acceptance Criteria | Questions to answer, timebox |
+| epic | Success Criteria | Conditions for closing the epic |
+| chore/decision/milestone | — | ACs optional |
+
+- Bullet points using behavioral language (should/shows/returns/renders)
+- Describe **observable outcomes**, not implementation steps
+- "Loading indicator appears" is an AC. "Add isLoading state variable" is not.
+
+### Non-goals (recommended for feature beads)
+
+Add a "Non-goals:" line in the description to prevent agent scope creep. State what this bead is explicitly NOT doing.
+
+## Validation
+
+Run `bd lint` to check open beads for missing required sections. Enable auto-validation with `bd config set validation.on-create warn` to catch quality issues at creation time. Use `bd create --dry-run` to preview before creating.
+
+## Before creating a bead
+
+Check that the work doesn't already have a bead:
+
+```bash
+bd search "loading indicator"     # text search for related beads
+bd list --status=open             # scan open beads for overlap
+```
+
+If a related bead exists, consider: should this be a child of that bead (`--parent`), a dependency (`bd dep add`), or an update to the existing bead's description?
+
+**When to skip the search:** If the beads DB isn't running (cold start, broken redirect) or you're creating the first beads on a new project, proceed without search and run `bd doctor` afterward.
+
+## Example
+
+```bash
+# BAD — no ACs, no non-goals, description restates title
+bd create "Fix loading state" -t bug -p 1
+
+# GOOD — self-contained with ACs and non-goals
+bd create "Add loading indicators to beads-ui tab switching" \
+  --description="When switching tabs in beads-ui, the UI shows 'No issues' while data loads — indistinguishable from an empty workspace. Track subscription state in subscription-issue-store. Render spinner while loading. Files: src/client/subscription-issue-store.js, src/client/views/*.js. Non-goals: not changing the subscription protocol or server-side caching in this bead." \
+  --acceptance="Switching to an unloaded tab shows a loading indicator, not 'No issues'. Tab with zero real issues still shows 'No issues' after load completes. Loading indicator disappears within 1s of data arriving." \
+  -t feature -p 1
+```
+
+## Parent-child structure
+
+Use `--parent` for hierarchical issues under an epic:
+
+```bash
+bd create "Sub-task A" --parent=bd-epic-123 --type=task
+```
+
+Children get auto-generated hierarchical IDs (e.g., `bd-epic-123.1`). Prefer `--parent` over standalone `bd dep add` for true containment relationships. Check epic progress with `bd epic status <id>`.
+
+## Ephemeral issues (wisps)
+
+Use `--ephemeral` for short-lived tracking that doesn't warrant permanent storage: agent heartbeats, exploratory investigation notes, temporary coordination signals. Wisps are subject to TTL compaction and excluded from exports. To promote a wisp to a permanent bead: `bd promote <wisp-id> --reason "..."`.
+
+## Anti-patterns
+
+1. **Bead explosion.** Creating 8+ beads for work that could be 3. Every bead has overhead (AC writing, evidence gathering, close ceremony). If a bead's only AC is "file X exists," it's too small — fold it into a sibling.
+2. **Graph-free multi-bead planning.** Creating 4+ beads with no dependency structure. If the Planner creates more than 3 beads, they MUST wire dependencies with `bd dep add` or use `bd create --graph`. Unstructured bead lists become unsequenced grab-bags.
+3. **Stale accumulation.** Opening beads and never closing or deferring them. If a bead hasn't been touched in a week, defer it, close as "won't do," or reassess priority. `bd stale` catches these.
+4. **Duplicate creation.** Creating a new bead without checking `bd search` first. Two beads tracking the same work confuse agents and users.
+5. **Orphaned in-progress.** Claiming a bead and ending the session without closing it or noting progress. Always `bd note <id> "Progress: ..."` before session end if the bead isn't done.
+6. **Evidence-free closes.** `bd close --reason "Done"` with no AC mapping. Every close reason must reference specific ACs and evidence (test output, commit hash, manual verification). **"Will be verified later," "deferred to PR review," or "to be re-checked during integration" are IOUs, not evidence.** See `bead-completion.md` § "Do not defer AC verification" for the four legitimate ways to handle an AC that can't be verified in the current session (do it now, leave in_progress, block, or split to a follow-up bead).
+7. **AC as implementation steps.** "Add isLoading state variable" is an implementation step, not an AC. ACs describe observable outcomes: "Loading indicator appears when switching tabs."
+
+## When closing beads
+
+Always include a `--reason` with `bd close` that maps to the acceptance criteria. See `bead-completion.md` for the full evidence policy by bead type (bug, feature, story, spike, refactor, chore, docs, decision, milestone, epic).
+
+Reference commit hash, branch name, or PR URL in every close reason.
+
+```bash
+# BAD — vague
+bd close gastown-abc --reason "Done"
+
+# GOOD — evidence mapped to ACs
+bd close gastown-abc --reason "Commit a1b2c3f on feature/loading-ux. AC1: spinner renders on tab switch (verified manually). AC2: empty state shows after load (test_empty_tab passes). AC3: spinner gone <1s (verified manually)."
+```
