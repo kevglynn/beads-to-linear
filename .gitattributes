@@ -1,0 +1,5 @@
+# Beads JSONL — use union merge to keep both sides' changes.
+# When two devs modify different issues (different lines), this auto-merges.
+# When two devs modify the SAME issue (same line), git raises a conflict
+# for manual resolution.
+.beads/issues.jsonl merge=union
