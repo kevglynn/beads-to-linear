@@ -1,0 +1,85 @@
+name: Linear Sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # Only trigger on issues.jsonl changes — NOT external_refs.json.
+      # This separation is what prevents the self-triggering loop.
+      # See PLAN.md §5 "External_ref storage separation".
+      - '.beads/issues.jsonl'
+
+concurrency:
+  group: linear-sync-${{ github.repository }}
+  # Queue rather than cancel — every push should sync, ordering matters
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: write  # needed for git push back to main
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # SYNC_BOT_TOKEN is a PAT or GitHub App token. The default
+          # GITHUB_TOKEN can't trigger other workflows and may lack push
+          # access with branch protection. See PLAN.md §7.
+          token: ${{ secrets.SYNC_BOT_TOKEN }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name "beads-sync-bot"
+          git config user.email "beads-sync-bot@users.noreply.github.com"
+
+      - name: Install bd
+        run: |
+          # TODO: replace with actual bd installation once we have a
+          # published release artifact or GitHub release URL.
+          # For now, this assumes bd is pre-installed on the runner
+          # (e.g. via a custom runner image or a prior setup step).
+          #
+          # Future:
+          #   curl -fsSL https://github.com/gastownhall/beads/releases/latest/download/bd-linux-amd64 \
+          #     -o /usr/local/bin/bd && chmod +x /usr/local/bin/bd
+          echo "::group::bd version"
+          bd --version || echo "WARNING: bd not yet installed — worker will fail at sync step"
+          echo "::endgroup::"
+
+      - name: Install jq
+        run: |
+          if ! command -v jq &>/dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq jq
+          fi
+          jq --version
+
+      - name: Initialize beads database
+        run: |
+          # The CI worker starts fresh each run — no persistent state.
+          # This is intentional: stateless reproducibility > incremental speed.
+          if [[ ! -d .beads/embeddeddolt ]]; then
+            bd init --force 2>/dev/null || true
+          fi
+
+      - name: Run sync worker
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          # OAuth (preferred, once PR-3 lands upstream):
+          # LINEAR_OAUTH_CLIENT_ID: ${{ secrets.LINEAR_OAUTH_CLIENT_ID }}
+          # LINEAR_OAUTH_CLIENT_SECRET: ${{ secrets.LINEAR_OAUTH_CLIENT_SECRET }}
+          BTL_MAX_PUSH_DELTA: "100"
+        run: bash scripts/linear-sync-worker.sh
+
+      - name: Upload sync log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-log-${{ github.run_id }}
+          path: .beads/sync-history/
+          retention-days: 30
+          if-no-files-found: ignore

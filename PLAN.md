@@ -601,11 +601,10 @@ Each row is a real choice the human owner must make. Status: **RESOLVED** means 
 | d12 | Bead disappears from JSONL — what happens in Linear? | **ARCHIVE the Linear issue** | Clean, recoverable, PM sees it vanish from active board. Avoids stale orphans accumulating silently. | 2026-05-01 |
 | d13 | HTML comment search validation | **VALIDATED — HTML comments ARE searchable** | Tested 2026-05-02 in sandbox (KEV-5, KEV-6). Both `searchIssues(term:)` and `issues(filter: {description: {contains:}})` find text inside `<!-- ... -->`. The `contains` filter is the reliable path for PR-5 (exact substring, no indexing delay). The idempotency mechanism is architecturally sound. | 2026-05-02 |
 
-### Open decisions
+| d14 | OAuth client identity strategy | **(a) One OAuth app per org** | Single credential to rotate, single audit trail, simplest secret management. | 2026-05-02 |
+| d15 | OAuth spike: client_credentials validation | **VALIDATED** | Provisioned `beads-sync-bot` OAuth app in Linear. `client_credentials` grant works with explicit `scope=read,write`. Token TTL=30 days (needs refresh logic). `actor=application` gives bot identity (`beads-sync-bot`), synthetic email, separate from personal accounts. Rate limits standard: 2M complexity / 5K requests per hour. App is private to workspace. | 2026-05-02 |
 
-2. **OAuth client identity strategy.**
-   - Options: (a) one OAuth app per org, one client credential, used by the CI worker; (b) one OAuth app per Linear team, used by team-specific worker shards; (c) reuse an existing organizational OAuth app.
-   - Recommendation: **(a)**. Single credential to rotate, single audit trail, simplest secret management.
+### Open decisions
 
 3. **Per-laptop pull credential.**
    - Options: (a) personal Linear API key per dev, stored in `LINEAR_API_KEY` env var only (recommended); (b) shared service account for read-only pulls; (c) the same OAuth client credential as the writer.
