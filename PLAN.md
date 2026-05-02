@@ -41,9 +41,11 @@ You work in Linear like normal: triaging the backlog, setting priorities, adjust
 
 **What you see:** Issues appearing in Linear that correspond to what devs are actually working on. Statuses that reflect reality — when a dev closes a bead locally, the corresponding Linear issue moves to "Done" on the next CI run (within minutes of their push). When a dev creates a new task, it shows up in Linear without anyone asking them to file a ticket.
 
-**What you can do:** Change priorities in Linear, add labels, update statuses, reassign. Those changes flow back to devs' laptops on the 15-minute pull cycle. If you mark something as urgent in Linear, the dev sees it locally in their `bd list` output within 15 minutes.
+**What you can do:** Change priorities in Linear, add labels, update statuses, reassign — and **create new issues directly in Linear**. Those changes flow back to devs' laptops on the 15-minute pull cycle. If you mark something as urgent in Linear, the dev sees it locally in their `bd list` output within 15 minutes. If you create a new issue in Linear, it appears as a local bead in every dev's workspace on the next pull. You don't need to ask a dev to "file a ticket in beads" — just create it in Linear and it flows down.
 
 **What you don't have to do:** Chase devs to update tickets. Run "ticket hygiene" meetings. Wonder if the board reflects reality. The board IS reality because it's fed by the same tool devs use to do their actual work.
+
+**What happens when something disappears:** If a dev deletes a bead or converts it to a private "wisp," the corresponding Linear issue is **archived** (not deleted). It moves out of your active board views but is recoverable if needed. You'll never see a ticket silently go stale — it either stays current or gets cleanly archived.
 
 **One caveat to understand:** Not everything a dev tracks locally shows up in Linear. Devs have "wisps" — throwaway scratch notes and draft thoughts that are intentionally private. Only real work items (tasks, bugs, features, stories, epics) make it to Linear. This means your Linear board isn't cluttered with every half-formed thought a dev had at 2am.
 
@@ -289,9 +291,10 @@ Solid edges = write path (single writer, ordered by git history). Dashed edges =
 ### Operational model
 
 - **CI worker:** GitHub Actions / Bitbucket Pipelines / equivalent triggered on `push` events to `main` that touch `.beads/issues.jsonl`. Holds one OAuth client-credential pair as repo secrets. Rebuilds canonical beads DB from `main`'s JSONL on each run (no persistent state) — this trades a few seconds of `bd import` for stateless reproducibility.
-- **Per-laptop pull:** A small wrapper script around `bd linear sync --pull` runs on a per-dev jittered cron (e.g., `0,15,30,45 * * * * sleep $RANDOM%180; bd linear sync --pull`). The dev's personal Linear key sits in `LINEAR_API_KEY` env var, never in `.beads/config.yaml`.
-- **Conflict resolution:** Writes are causally ordered by git commit order (the worker processes commits sequentially). Pulls on the laptop use the existing `--prefer-linear` policy by default — the worker's writes are authoritative for org-visible state.
-- **Privacy:** Wisps are excluded by the existing `--exclude-type wisp` default at `bd export` time before JSONL hits git. The worker never sees them. There is no federation pathway to leak through.
+- **Per-laptop pull:** A small wrapper script around `bd linear sync --pull --prefer-linear` runs on a per-dev jittered cron (e.g., `0,15,30,45 * * * * sleep $RANDOM%180; bd linear sync --pull --prefer-linear`). The dev's personal Linear key sits in `LINEAR_API_KEY` env var, never in `.beads/config.yaml`. **Pulls are bidirectional for issue creation:** when a PM creates an issue in Linear, the next dev pull creates a corresponding local bead (decision d11).
+- **Conflict resolution:** Writes are causally ordered by git commit order (the worker processes commits sequentially). Pulls on the laptop use `--prefer-linear` policy (decision d5) — the worker's writes are authoritative for org-visible state.
+- **Disappearance policy:** When a bead disappears from JSONL (deleted, converted to wisp, or retroactively filtered), the CI worker **archives** the corresponding Linear issue (decision d12). Archived issues are recoverable within Linear's retention window but out of active board views. The worker logs the archive action in the sync audit trail.
+- **Privacy:** ~~Wisps are excluded by the existing `--exclude-type wisp` default at `bd export` time.~~ **CORRECTION (adversarial review, Security P0.2):** `bd export` does NOT exclude wisps by default — `"wisp"` is not in `DefaultInfraTypes()` at `export_auto.go:163`. Memories also leak (P0.3). Two upstream bugs filed. Until those land, the pre-commit hook must pass `--exclude-type wisp --exclude-type memory` explicitly. There is no federation pathway to leak through.
 - **Audit:** Every CI run produces a structured log line per push attempt with `bead_id, linear_id, attempt#, outcome, status_code, duration_ms` to stderr; collected via the org's existing CI log aggregation. CI run JSON output (`bd linear sync --json`) is committed back as `.beads/sync-history/<run-id>.json` on success, providing a tamper-evident audit chain in git.
 
 ### Why this beats the previous Phase 1 recommendation (Option 4)
@@ -300,6 +303,41 @@ Solid edges = write path (single writer, ordered by git history). Dashed edges =
 - No "bridge" subcommand → no charter conflict (Cluster E finding).
 - No Dolt-remote-from-50-laptops setup → no per-dev networking coordination.
 - Two real upstream PRs (OAuth, batch mutations) generated as natural artifacts of the work, instead of zero (the bridge pattern doesn't surface upstreamable code).
+
+### External_ref storage separation (resolved post-adversarial-review)
+
+The adversarial review (Architecture C1, Performance W1) identified the original write-back design as broken in *normal operation*: the pre-commit hook runs `bd export`, which regenerates JSONL from the local Dolt DB. But the local DB doesn't have external_refs (those only exist in git after the CI worker writes them back). So every dev push within the 15-minute pull window **strips** the CI worker's external_refs, causing duplicate Linear issues on the next CI run.
+
+**Chosen design: two-file separation.**
+
+| File | Writer | Reader | Trigger |
+|---|---|---|---|
+| `.beads/issues.jsonl` | Dev laptops (via pre-commit `bd export`) | CI worker (via `bd import`) | CI workflow triggers on changes to this file |
+| `.beads/external_refs.json` | CI worker only (after successful push to Linear) | Dev laptops (via `git pull`) and CI worker (dedup lookup) | **Does not trigger CI** — workflow ignores this file |
+
+Format of `external_refs.json`:
+```json
+{
+  "version": 1,
+  "updated_at": "2026-05-02T04:00:00Z",
+  "refs": {
+    "btl-hgv": {"linear_id": "abc123", "linear_url": "https://linear.app/kevglynn/issue/KEV-42/...", "synced_at": "2026-05-02T04:00:00Z"},
+    "btl-lp5": {"linear_id": "def456", "linear_url": "https://linear.app/kevglynn/issue/KEV-43/...", "synced_at": "2026-05-02T04:00:00Z"}
+  }
+}
+```
+
+This also resolves three related design flaws:
+- **Self-triggering loop (Arch C2):** CI workflow only watches `issues.jsonl`; CI only writes `external_refs.json`. No loop.
+- **JSONL merge conflicts (Perf W1):** Dev-to-dev JSONL merges never conflict with CI writes because CI never touches JSONL.
+- **Concurrent CI serialization (Arch C3):** Solved by the GitHub Actions `concurrency` group (one-liner in workflow YAML), plus the separate-file design ensures even if two runs overlap, external_refs.json is append-safe (JSON keys are bead IDs — last write wins correctly).
+
+The CI workflow YAML will include:
+```yaml
+concurrency:
+  group: linear-sync-${{ github.repository }}
+  cancel-in-progress: false
+```
 
 ### Key risks to mitigate
 
@@ -543,59 +581,35 @@ The order matters. Doing it the wrong way creates duplicates that take significa
 
 ---
 
-## 9. Open Decisions for Human
+## 9. Decisions
 
-Each is a real choice the human owner must make. Recommendations are advisory.
+Each row is a real choice the human owner must make. Status: **RESOLVED** means a decision was taken and recorded; **OPEN** means it still needs a human call.
 
-1. **Is `gastownhall/beads` truly the upstream target, or do we maintain a long-lived org-internal fork?**
-   - Options: (a) all changes go upstream as PRs, this repo holds only org-internal infra (recommended); (b) hard fork at `kevglynn/beads`, cherry-pick interesting upstream changes; (c) hybrid — fork for fast experimentation, upstream PRs lag behind by some interval.
-   - Recommendation: **(a)**. The Integration Charter is well-defined and the maintainers ship quickly. All P0 / P1 PRs in §6 are charter-compatible by construction.
-   - Reasoning: forking forfeits the leverage of upstream review and the goodwill of being a contributor; the only reason to fork is if upstream rejects an architecturally-required change, which has not happened.
+### Resolved decisions
+
+| # | Decision | Choice | Rationale | Date |
+|---|----------|--------|-----------|------|
+| d1 | Upstream target vs. org fork | **(a) All changes go upstream as PRs** | Charter is well-defined, maintainers ship quickly. Forking forfeits upstream review leverage and contributor goodwill. | 2026-05-01 |
+| d4 | `.beads/issues.jsonl` in git | **(a) Commit on every change** (current default) | Full history is the audit chain. Central writer correctness depends on seeing every dev's deltas. | 2026-05-01 |
+| d5 | Per-laptop pull conflict policy | **(a) `--prefer-linear`** | Linear is the source of truth for org-visible state. Devs override by editing locally and pushing through git → CI → Linear. | 2026-05-01 |
+| d6 | Repo home for org tooling | **(a) Standalone `beads-to-linear` repo** | Easier to iterate without coupling to consumer projects. | 2026-05-01 |
+| d7 | Jira backfill scope | **(a) All open + last 12 months closed** | Older closed issues stay in Jira archive; avoids polluting Linear search index. | 2026-05-01 |
+| d8 | Per-laptop pull cadence | **(b) 15-min cron with jitter** | Well within agent-workflow tolerances; reduces aggregate pull traffic. Charter forbids sub-minute (no webhooks). | 2026-05-01 |
+| d9 | Stop-gap if PR-3 (OAuth) is slow | **(a) Wait for PR-3** | Personal API key in CI creates audit-trail problem (all writes attributed to one person). OAuth `actor=app` is the right answer. | 2026-05-01 |
+| d10 | CI worker writes back `external_ref` | **(a) Commit to `main` after each push** | Closes the dedup window in seconds; lazy pull leaves it open for a full cycle. | 2026-05-01 |
+| d11 | PM-created Linear issues → beads | **YES — bidirectional** | PMs can originate work in Linear; `bd linear sync --pull` creates local beads. Truly bidirectional "single pane of glass." | 2026-05-01 |
+| d12 | Bead disappears from JSONL — what happens in Linear? | **ARCHIVE the Linear issue** | Clean, recoverable, PM sees it vanish from active board. Avoids stale orphans accumulating silently. | 2026-05-01 |
+| d13 | HTML comment search validation | **VALIDATED — HTML comments ARE searchable** | Tested 2026-05-02 in sandbox (KEV-5, KEV-6). Both `searchIssues(term:)` and `issues(filter: {description: {contains:}})` find text inside `<!-- ... -->`. The `contains` filter is the reliable path for PR-5 (exact substring, no indexing delay). The idempotency mechanism is architecturally sound. | 2026-05-02 |
+
+### Open decisions
 
 2. **OAuth client identity strategy.**
-   - Options: (a) one OAuth app per org, one client credential, used by the CI worker; (b) one OAuth app per Linear team, used by team-specific worker shards; (c) reuse an existing organizational OAuth app (e.g., GitHub Action that already integrates with Linear).
+   - Options: (a) one OAuth app per org, one client credential, used by the CI worker; (b) one OAuth app per Linear team, used by team-specific worker shards; (c) reuse an existing organizational OAuth app.
    - Recommendation: **(a)**. Single credential to rotate, single audit trail, simplest secret management.
-   - Reasoning: the CI worker is already a single writer; multiple credentials add complexity without solving any failure mode that one credential creates.
 
 3. **Per-laptop pull credential.**
-   - Options: (a) personal Linear API key per dev, stored in `LINEAR_API_KEY` env var only (recommended); (b) shared service account for read-only pulls; (c) the same OAuth client credential as the writer (only feasible if PR-3 supports it cleanly).
+   - Options: (a) personal Linear API key per dev, stored in `LINEAR_API_KEY` env var only (recommended); (b) shared service account for read-only pulls; (c) the same OAuth client credential as the writer.
    - Recommendation: **(a)** initially, migrating to **(c)** once PR-3 supports per-process OAuth client credentials with separate read-only scope.
-   - Reasoning: (a) is the minimum viable today; (b) creates a shared-secret rotation problem; (c) is the long-term clean answer but depends on Linear's OAuth scope model.
-
-4. **What happens to `.beads/issues.jsonl` in git long-term?**
-   - Options: (a) commit it on every change (current default; produces churn but provides full history); (b) commit only on bead create/close (less churn but less audit fidelity); (c) keep it gitignored and run `bd export` only in CI as an interchange.
-   - Recommendation: **(a)** (current default). The churn is acceptable (text format; git delta-compresses well); the full history is the audit chain.
-   - Reasoning: the central writer's correctness depends on seeing every dev's deltas; throttling exports breaks the architecture's ordering guarantee.
-
-5. **Conflict resolution policy for the per-laptop pull path.**
-   - Options: (a) `--prefer-linear` (recommended) — Linear is the source of truth for status; (b) `--prefer-local` — devs' local agent work overrides Linear; (c) timestamp-based (default).
-   - Recommendation: **(a)**. The CI worker's writes are authoritative; per-laptop pulls accept Linear's version on conflict.
-   - Reasoning: any other choice creates the silent-overwrite failure mode the architecture exists to prevent. Devs who need to override Linear can do so by editing locally and pushing through git, which the CI worker will then push to Linear in the normal way.
-
-6. **Is the `beads-to-linear` repo the right home, or should the org-internal tooling live in the same repo as the codebase being managed?**
-   - Options: (a) standalone repo (`beads-to-linear` — the current setup); (b) `.beads-tooling/` subdirectory in each project repo; (c) an org-wide infrastructure repo alongside CI workflows.
-   - Recommendation: **(a)** for now. Standalone is easier to iterate on without coupling to any specific consumer project.
-   - Reasoning: this repo is the single source of truth for the architecture decisions and runbooks; project repos consume the CI workflow definitions but don't need to host them.
-
-7. **Backfill volume estimate for Jira → Linear.**
-   - Decision needed: how many historical Jira issues are in scope? Closed / resolved? Last 12 months, last 24, all of it?
-   - This is an org policy choice, not a technical one. Recommendation: **all open issues + last 12 months of closed**. Older closed issues should remain in Jira archive.
-   - Reasoning: closed-historical issues that may need future reference are better served by Jira's read-only mode than by polluting Linear's search index.
-
-8. **Read-path latency floor — is "every 15 minutes" acceptable for dev pulls?**
-   - Options: (a) 5-min cron with jitter; (b) 15-min cron with jitter (recommended); (c) on-demand only (devs run `bd linear sync --pull` manually).
-   - Recommendation: **(b)**. 15 minutes is well within agent-workflow tolerances; reduces aggregate pull traffic to comfortable levels.
-   - Reasoning: charter forbids webhooks, so sub-minute reads are not available; the trade-off is between read latency and aggregate pull traffic.
-
-9. **If upstream PR-3 (OAuth) takes a long time to merge, do we ship the centralized architecture with a personal API key in CI secrets as a stop-gap?**
-   - Options: (a) wait for PR-3 (recommended); (b) ship with a dedicated bot user's personal API key as a transitional credential; (c) defer the centralized architecture entirely.
-   - Recommendation: **(a)** unless org rollout has a hard urgency.
-   - Reasoning: a personal API key in CI is technically functional but creates a credential audit-trail problem (all writes attributed to one person, not "the bot"); the OAuth `actor=app` mode is the right long-term answer and PR-3 is small enough to expect quick review.
-
-10. **Should the CI worker write back the `external_ref` updates to `main`, or should each dev pull them lazily?**
-    - Options: (a) worker commits external_ref updates to `main` after each successful push (recommended; provides immediate cross-dev visibility); (b) lazy — devs pull external_refs from Linear on next `bd linear sync --pull`.
-    - Recommendation: **(a)**.
-    - Reasoning: external_ref is needed for any subsequent dev to know "this bead is already in Linear, don't try to create it again." Lazy creates a window where two devs could attempt to create the same Linear issue. (a) closes that window in seconds; (b) leaves it open for an entire pull cycle.
 
 ---
 

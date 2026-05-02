@@ -1,0 +1,136 @@
+{
+  "commit_message": "seed: 13 beads from adversarial review findings",
+  "nodes": [
+    {
+      "key": "task-extref-design",
+      "title": "Implement external_ref storage separation (.beads/external_refs.json)",
+      "type": "task",
+      "priority": 1,
+      "labels": ["architecture", "linear-sync"],
+      "parent": "epic-arch",
+      "description": "Implement the two-file separation design from PLAN.md §5 (post-adversarial-review). CI worker writes external_refs.json (bead_id → linear_id/url mapping); devs never touch it. CI workflow triggers only on issues.jsonl changes. Resolves: (1) external_ref write-back cycle (Arch C1), (2) CI self-triggering loop (Arch C2), (3) daily JSONL merge conflicts (Perf W1). See PLAN.md §5 'External_ref storage separation' for the full design.",
+      "acceptance": "CI worker writes .beads/external_refs.json after successful Linear push. File format matches PLAN.md spec (version, updated_at, refs map). CI workflow YAML triggers only on .beads/issues.jsonl changes, ignoring external_refs.json. CI workflow includes concurrency group to serialize runs. Pre-commit hook never touches external_refs.json. Integration test: push → verify external_refs.json written → second push uses it for dedup. Non-goals: not changing the JSONL format; not modifying bd export."
+    },
+    {
+      "key": "bug-wisp-leak",
+      "title": "Upstream bug: bd export includes wisps in JSONL by default",
+      "type": "bug",
+      "priority": 1,
+      "labels": ["upstream", "privacy", "security"],
+      "parent": "epic-upstream",
+      "description": "Security review (P0.2) verified that bd export does NOT exclude wisps by default. 'wisp' is not in DefaultInfraTypes() at export_auto.go:163. The pre-commit hook passes no --exclude-type flag. Wisps (including error and escalation subtypes with stack traces) go into JSONL, into git, and potentially into Linear. This contradicts PLAN.md's privacy claim and the intended privacy boundary. File upstream at gastownhall/beads.",
+      "acceptance": "Upstream issue filed at gastownhall/beads with reproduction steps. Issue references export_auto.go:163, DefaultInfraTypes(), and the pre-commit hook. Proposes adding 'wisp' to DefaultInfraTypes() or adding --exclude-type wisp to the default pre-commit hook invocation. Workaround documented in PLAN.md for the interim."
+    },
+    {
+      "key": "bug-memory-leak",
+      "title": "Upstream bug: bd export includes memories in JSONL",
+      "type": "bug",
+      "priority": 1,
+      "labels": ["upstream", "privacy", "security"],
+      "parent": "epic-upstream",
+      "description": "Security review (P0.3/F-04) found that bd remember memories leak through the export pipeline. Memories contain potentially sensitive agent context, debugging notes, and personal observations that should not reach git or Linear. Same root cause as the wisp leak — DefaultInfraTypes() doesn't include 'memory'. File upstream at gastownhall/beads.",
+      "acceptance": "Upstream issue filed at gastownhall/beads. Proposes adding 'memory' to DefaultInfraTypes() or the pre-commit hook's exclude list. Filed as a companion to the wisp leak bug."
+    },
+    {
+      "key": "spike-oauth-race",
+      "title": "Spike: verify OAuth token acquisition race under concurrent CI",
+      "type": "spike",
+      "priority": 2,
+      "labels": ["architecture", "security"],
+      "parent": "epic-arch",
+      "description": "Security review (F-06) flagged that concurrent CI runs could invalidate each other's OAuth tokens. Linear's OAuth client-credentials grant issues one active token per app — fetching a new token might invalidate the previous one. If two CI runs both detect an expired token simultaneously, they could race on token refresh. Validate this behavior before building PR-3 (OAuth support). Test in the sandbox workspace.",
+      "acceptance": "Tested in sandbox: two concurrent token fetches from the same OAuth app. Document whether: (a) both tokens remain valid, (b) second invalidates first, or (c) Linear deduplicates. Document implications for PR-3 design. If racing is possible, recommend token caching with lock in CI."
+    },
+    {
+      "key": "task-pilot-validation",
+      "title": "Phase 1 pilot validation plan (50-bead burn-in, exit criteria tracking)",
+      "type": "task",
+      "priority": 2,
+      "labels": ["pilot", "quality"],
+      "parent": "epic-arch",
+      "description": "Define the structured validation plan for Phase 1 pilot per PLAN.md §8. Track exit criteria: 50+ beads pushed, zero unresolved errors over 20 consecutive runs, 2+ conflicts encountered and resolved, pilot devs report no disruption. Create the tracking artifacts and daily check scripts.",
+      "acceptance": "Validation checklist document exists in docs/. Daily check script that queries CI logs and Linear API for push counts, error counts, conflict counts. Exit criteria scorecard updated after each CI run. Go/no-go template for Phase 2 entry."
+    },
+    {
+      "key": "task-jsonl-merge",
+      "title": "JSONL merge strategy and .gitattributes config",
+      "type": "task",
+      "priority": 2,
+      "labels": ["architecture", "developer-experience"],
+      "parent": "epic-arch",
+      "description": "Three reviewers (Arch H1, Flows E1, Perf W1) independently flagged JSONL text merge as the daily friction point. Git's default line-based merge works at the JSONL line level (one issue per line) but can produce invalid merges when two devs modify the same issue. Define the merge strategy: (a) union merge driver (both lines kept, CI worker dedup), (b) custom bead-aware merge driver, or (c) accept and document the manual resolution workflow. Configure .gitattributes accordingly.",
+      "acceptance": ".gitattributes entry for .beads/issues.jsonl with chosen merge strategy. Test: two branches modify the same bead, merge, verify result. Documentation in onboarding guide for how devs handle merge conflicts. Non-goals: not building a full semantic merge driver unless (a) or (c) prove insufficient in pilot."
+    },
+    {
+      "key": "task-ci-monitoring",
+      "title": "CI monitoring/alerting dashboard for sync worker",
+      "type": "task",
+      "priority": 2,
+      "labels": ["observability", "ops"],
+      "parent": "epic-arch",
+      "description": "Build monitoring dashboard tracking: sync success rate, push/pull counts, conflict frequency, API quota utilization, drift count (beads in JSONL vs Linear issues), latency per sync run. Wire alerting for: sync failure, rate limit breach, drift exceeding threshold.",
+      "acceptance": "Dashboard accessible (Datadog, Grafana, or org-standard tool). Alerts fire on sync failure and rate limit threshold breach. Metrics sourced from CI logs and sync-history JSON artifacts. Documented in runbook."
+    },
+    {
+      "key": "task-onboarding-guide",
+      "title": "Dev onboarding guide for beads-to-Linear sync",
+      "type": "task",
+      "priority": 3,
+      "labels": ["documentation", "developer-experience"],
+      "parent": "epic-arch",
+      "description": "Separate from the ops runbook (btl-pjn). Covers the dev perspective: how to set up LINEAR_API_KEY, install the pull cron, what to expect in bd list, how to handle merge conflicts on issues.jsonl, FAQ for common issues. Written for devs who are new to beads or new to the Linear integration.",
+      "acceptance": "Document in docs/onboarding/. A dev can complete setup from this guide alone. Covers: env var setup, cron install, first sync, merge conflict resolution, FAQ. Reviewed by at least one non-power-user."
+    },
+    {
+      "key": "task-config-template",
+      "title": "Config template for org Linear sync defaults",
+      "type": "task",
+      "priority": 3,
+      "labels": ["ops", "configuration"],
+      "parent": "epic-arch",
+      "description": "Create templates/.beads/config.yaml with org-specific defaults: linear.team_ids, linear.exclude_labels, linear.priority_map.*, linear.state_map.* defaults committed for consistency across devs. Include validation script to check dev configs against org template.",
+      "acceptance": "Template file at templates/.beads/config.yaml. Validation script that diffs dev config against template and flags drift. Documented in onboarding guide."
+    },
+    {
+      "key": "task-linear-404",
+      "title": "Handle Linear issue hard-deletion (404 on update) in sync",
+      "type": "task",
+      "priority": 3,
+      "labels": ["reliability", "edge-case"],
+      "parent": "epic-arch",
+      "description": "When a Linear issue is permanently deleted (not just archived), the next CI push attempt for that bead gets a 404. Current behavior is undefined — likely an unhandled error that halts the sync run. Define the behavior: (a) clear external_ref and re-create, (b) log warning and skip, (c) surface error for human review.",
+      "acceptance": "Defined behavior when issueUpdate returns 404. CI worker handles gracefully without halting the full sync run. Behavior documented in runbook. Test: manually delete a synced Linear issue, trigger sync, verify graceful handling."
+    },
+    {
+      "key": "chore-offboarding",
+      "title": "Offboarding procedures for departed devs",
+      "type": "chore",
+      "priority": 3,
+      "labels": ["ops", "security"],
+      "parent": "epic-arch",
+      "description": "When a dev leaves the org: revoke their LINEAR_API_KEY, remove their pull cron, reassign their in-progress beads, verify no orphaned Linear issues attributed to their account. Document in runbook.",
+      "acceptance": "Offboarding checklist in runbook. Covers: API key revocation, cron removal, bead reassignment, Linear issue audit. Can be completed by any ops person, not just the departing dev."
+    },
+    {
+      "key": "chore-branch-protection",
+      "title": "Branch protection rules for repos using beads-to-Linear sync",
+      "type": "chore",
+      "priority": 3,
+      "labels": ["ops", "security"],
+      "parent": "epic-arch",
+      "description": "Configure branch protection on main to: require PR reviews, prevent force-push (protects JSONL and external_refs.json history), allow the CI bot to push external_refs.json commits. Document required GitHub settings.",
+      "acceptance": "Branch protection config documented. CI bot account can push to main (for external_refs.json commits) without requiring PR. Force-push disabled for all other users. Documented in runbook."
+    },
+    {
+      "key": "decision-multi-repo",
+      "title": "Decide: multi-repo CI worker topology",
+      "type": "decision",
+      "priority": 3,
+      "labels": ["architecture"],
+      "parent": "epic-arch",
+      "description": "When multiple repos use beads with Linear sync, does each repo run its own CI worker (simple, isolated, N workflows), or does a central worker aggregate across repos (complex, one workflow, cross-repo visibility)? This decision affects Phase 3+ expansion. Not blocking for pilot.",
+      "acceptance": "Decision documented with rationale. Options evaluated against: operational complexity, failure isolation, cross-repo relation handling, credential management."
+    }
+  ],
+  "edges": []
+}
