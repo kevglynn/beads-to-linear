@@ -20,12 +20,18 @@ linear:
     "3": 3  # P3 → Medium
     "4": 4  # P4 → Low
 
-  # State mapping (beads status → Linear state name)
+  # State mapping: Linear state name/type → beads status
+  # IMPORTANT: key = Linear state (lowercase), value = beads status
+  # For push, each beads status must map to exactly ONE Linear state.
+  # For pull, multiple Linear states can map to the same beads status
+  # via type-based defaults (backlog/unstarted→open, started→in_progress,
+  # completed/canceled→closed) — you do NOT need explicit entries for those.
+  #
+  # Only set the one-to-one push targets here:
   state_map:
-    open: "Todo"
-    in_progress: "In Progress"
-    closed: "Done"
-    deferred: "Backlog"
+    todo: "open"
+    in progress: "in_progress"
+    done: "closed"
 
   # Type-to-label mapping (beads type → Linear label name)
   label_type_map:

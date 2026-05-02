@@ -133,8 +133,16 @@ do_install() {
   local bd_path
   bd_path="$(command -v bd)"
 
+  # Source ~/.secrets at runtime instead of embedding the key in the crontab
+  local secrets_source=""
+  if [[ -f "$HOME/.secrets" ]]; then
+    secrets_source="source ${HOME}/.secrets && "
+  elif [[ -f "$HOME/.zshrc" ]]; then
+    secrets_source="source ${HOME}/.zshrc && "
+  fi
+
   local cron_line
-  cron_line="*/15 * * * * sleep \$((RANDOM \\% 180)) && cd ${REPO_PATH} && LINEAR_API_KEY=${LINEAR_API_KEY} ${bd_path} linear sync --pull --prefer-linear >> ${LOG_FILE} 2>&1 ${CRON_MARKER}"
+  cron_line="*/15 * * * * sleep \$((RANDOM \\% 180)) && ${secrets_source}cd ${REPO_PATH} && ${bd_path} linear sync --pull --prefer-linear >> ${LOG_FILE} 2>&1 ${CRON_MARKER}"
 
   ( current_crontab; printf '%s\n' "$cron_line" ) | crontab -
 

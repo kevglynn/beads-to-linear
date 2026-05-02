@@ -51,7 +51,36 @@ shell profile sources `~/.secrets` (add `source ~/.secrets` to your
 
 ---
 
-## Step 3: Install the pull cron
+## Step 3: Configure the Linear state mapping
+
+Before syncing, `bd` needs to know which Linear workflow states correspond
+to beads statuses. The key direction is **Linear state → beads status**
+(not the other way around).
+
+For push to work, each beads status must map to exactly **one** Linear
+state. Pull is more forgiving — the built-in type defaults handle most
+cases automatically.
+
+Set the push-target mappings:
+
+```bash
+bd config set linear.state_map.todo open
+bd config set linear.state_map.in\ progress in_progress
+bd config set linear.state_map.done closed
+```
+
+That's the minimum. Do NOT add extra mappings (e.g., "backlog" → "open")
+unless you want them — duplicates cause push to fail with an ambiguity
+error. The defaults already handle Backlog, Canceled, and In Review on
+the pull path.
+
+> **Gotcha:** If you see `linear.state_map maps beads status "X" to
+> multiple Linear states`, you have two Linear states mapping to the same
+> beads status. Remove the duplicate with `bd config unset linear.state_map.<name>`.
+
+---
+
+## Step 4: Install the pull cron
 
 This sets up a background job that pulls Linear updates to your laptop every
 15 minutes (with jitter so the whole team doesn't hit Linear at once).
@@ -75,7 +104,7 @@ Expected output:
 
 ---
 
-## Step 4: Verify it works
+## Step 5: Verify it works
 
 Do a dry-run pull to confirm your credentials and config are correct:
 

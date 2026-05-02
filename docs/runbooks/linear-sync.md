@@ -110,7 +110,25 @@ If errors appear, check:
 - `linear.team_ids` in `.beads/config.yaml` includes the correct team
 - Network connectivity to `https://api.linear.app/graphql`
 
-#### 1.5 Validate config against org template
+#### 1.5 Configure state mapping
+
+Set the push-target state mappings (Linear state → beads status):
+
+```bash
+bd config set linear.state_map.todo open
+bd config set linear.state_map.in\ progress in_progress
+bd config set linear.state_map.done closed
+```
+
+**Critical:** Each beads status must map to exactly one Linear state for
+push. Adding duplicate mappings (e.g., both "todo" and "backlog" → "open")
+causes push to fail with an ambiguity error. Pull-direction type defaults
+(backlog→open, canceled→closed, etc.) work without explicit entries.
+
+If push fails with `maps beads status "X" to multiple Linear states`,
+remove the extra mapping: `bd config unset linear.state_map.<name>`.
+
+#### 1.6 Validate config against org template
 
 Compare the developer's config against the org template:
 
@@ -743,6 +761,18 @@ gh run view <run-id> --repo <org>/<repo> --log | grep -i "rate.limit\|retry-afte
 - If a large batch triggered the limit: the worker retries automatically with backoff. Wait for the next run.
 - If `Retry-After` header parsing is available (PR-6): the worker respects the server's hint automatically.
 
+#### Auth header format mismatch
+
+**Symptoms:** 400 error with `"It looks like you're trying to use an API key as a Bearer token"`.
+
+**Cause:** Personal API keys (`lin_api_*`) use `Authorization: <key>` (no
+Bearer prefix). OAuth tokens (`lin_oauth_*`) use `Authorization: Bearer <token>`.
+Mixing these up produces a 400.
+
+**Resolution:** Ensure the CI worker uses the correct header format for its
+credential type. The `bd` CLI handles this automatically, but custom scripts
+or curl commands must match the format to the token type.
+
 #### Auth expired (HTTP 401)
 
 **Symptoms:** Logs show `401 Unauthorized` or `invalid_token`.
@@ -890,6 +920,22 @@ diff <(grep -E '^linear\.' .beads/config.yaml | sort) \
   && echo "OK: config matches template" \
   || echo "WARNING: config drift detected"
 ```
+
+---
+
+## 11. Lessons from Dogfooding (2026-05-02)
+
+Findings from the first real sync of 32 beads to Linear using this project's own workspace.
+
+| # | Finding | Impact | Fix |
+|---|---------|--------|-----|
+| 1 | State map key direction is non-obvious: key=Linear state, value=beads status | Every dev will hit this on first setup | Updated config template, onboarding guide §3, and runbook §1.5 with explicit instructions |
+| 2 | Push requires strict 1:1 mapping per beads status; pull is forgiving via type defaults | Adding "backlog→open" alongside "todo→open" breaks push | Document: only set push targets, let defaults handle pull |
+| 3 | OAuth `client_credentials` requires explicit `scope=read,write` | Token request fails with `invalid_scope` if omitted | Documented in PLAN.md d15, CI worker script handles it |
+| 4 | Personal API keys use `Authorization: <key>` (no Bearer); OAuth uses `Bearer <token>` | curl commands with wrong header get 400 | Added auth header format section to runbook §9 |
+| 5 | `bd config unset` exists and works | Essential for fixing config mistakes | Added to runbook and FAQ |
+| 6 | OAuth app `actor=application` gives bot identity (`beads-sync-bot`) with standard rate limits (2M complexity / 5K req) | App identity confirmed separate from personal account | Validated in PLAN.md d15 |
+| 7 | Bidirectional sync works end-to-end: push 32 beads, edit in Linear, pull change back in <1 min | Core value proposition validated | No fix needed — it works |
 
 ---
 
