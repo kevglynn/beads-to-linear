@@ -1,0 +1,189 @@
+{
+  "commit_message": "seed: initial beads from PLAN.md §10 (epic-arch + epic-upstream + 17 children)",
+  "nodes": [
+    {
+      "key": "epic-arch",
+      "title": "Adopt centralized Linear sync architecture (Option 7)",
+      "type": "epic",
+      "priority": 1,
+      "labels": ["linear-sync", "architecture"],
+      "description": "Implement the per-laptop reads + central CI writer architecture documented in PLAN.md §5. Replaces the current per-laptop bidirectional sync model with one CI-mediated single writer to Linear and per-laptop read-only pulls. Eliminates conflict thrash, duplicate creation, and rate-limit storms on the write path. Depends on three upstream PRs (epic-upstream).\n\n## Success criteria\n\n- All devs run `bd linear sync --pull` only locally (never push)\n- One CI workflow is the sole `bd linear sync --push` invoker\n- One OAuth client credential held in CI secrets, no personal API keys in any git-tracked file\n- Every push to Linear is logged with bead_id, linear_id, outcome\n- Sync success rate ≥ 99.5% over 50 consecutive runs in pilot"
+    },
+    {
+      "key": "epic-upstream",
+      "title": "Upstream PRs to gastownhall/beads to unblock org architecture",
+      "type": "epic",
+      "priority": 1,
+      "labels": ["linear-sync", "upstream-pr"],
+      "description": "Coordinate the nine PRs documented in PLAN.md §6. Each PR is independently valuable to the upstream project but several are blockers for the org's centralized architecture (epic-arch). Sequenced to land canary first (build reviewer trust) before architecture-critical PRs.\n\n## Success criteria\n\n- PR-0 (type mapping canary) merged\n- PR-1 (refuse git-tracked secrets) merged — unblocks safe per-laptop credentials\n- PR-3 (OAuth client-credentials) merged — unblocks centralized writer credential\n- PR-4 (batch mutations) merged — unblocks efficient writer\n- PR-5 (idempotency) merged — unblocks reliable writer\n- PR-6 (Retry-After parsing) merged — unblocks rate-limit-safe writer"
+    },
+    {
+      "key": "task-pr0",
+      "title": "Open PR-0 to gastownhall/beads: type mapping completion (canary)",
+      "type": "task",
+      "priority": 2,
+      "parent_key": "epic-upstream",
+      "labels": ["upstream-pr", "canary"],
+      "description": "Add label-to-type mappings for decision, spike, story, milestone in internal/linear/mapping.go. Update linear.label_type_map.* defaults. Roundtrip tests for each new type. Closes upstream GH#3604. See PLAN.md §6 PR-0 for full scope.\n\n## Acceptance criteria\n\nPR opened against gastownhall/beads main, references GH#3604, includes unit tests in internal/linear/mapping_test.go, includes roundtrip test extension in cmd/bd/linear_roundtrip_test.go, passes `go test -race`, passes `golangci-lint`, charter-compliance noted in PR description.\n\n## Non-goals\n\n- Not changing default mappings for existing types\n- Not introducing config surface beyond linear.label_type_map.*"
+    },
+    {
+      "key": "task-pr1",
+      "title": "Open PR-1: refuse to write linear.api_key to git-tracked config.yaml",
+      "type": "task",
+      "priority": 1,
+      "parent_key": "epic-upstream",
+      "labels": ["upstream-pr", "p0-security"],
+      "description": "Detect git tracking of .beads/config.yaml in SetYamlConfig before writing yaml-only secret keys. Refuse with actionable error pointing to env var or out-of-tree secrets file. Update cmd/bd/init_templates.go:79-82 (stale documentation). Update examples/linear-workflow/README.md and docs/CONFIG.md to lead with env var. Add `bd doctor` check for git-tracked secret keys.\n\n**P0 SECURITY** — addresses the verified credential-leak-on-default-path. See PLAN.md §6 PR-1 for full scope.\n\n## Acceptance criteria\n\n- `bd config set linear.api_key foo` in a git repo fails with helpful error\n- `bd doctor` flags any git-tracked secret keys present in config.yaml\n- Template documentation updated to remove the false 'stored in the database' claim\n- README and CONFIG.md lead with `LINEAR_API_KEY` env var\n- Test coverage for tracked vs untracked config files\n- Charter-compliance noted in PR description (security hygiene of existing flow)\n\n## Non-goals\n\n- Not changing where untracked config.yaml stores keys\n- Not implementing the secrets.yaml file (separate concern)"
+    },
+    {
+      "key": "task-pr2",
+      "title": "Open PR-2: federation respects ephemeral / wisp filters",
+      "type": "task",
+      "priority": 2,
+      "parent_key": "epic-upstream",
+      "labels": ["upstream-pr", "p1-privacy"],
+      "description": "Add federation.exclude_types config key (default ['wisp']). In internal/storage/dolt/federation.go, filter the issue stream before federation push using the same predicate as engine.go:1295-1325. Multi-peer integration test.\n\n**P1 PRIVACY** — closes the verified gap that wisps excluded from Linear push leak to federation peers. See PLAN.md §6 PR-2 for full scope.\n\n## Acceptance criteria\n\n- Wisp created on peer A does not appear on peer B after `bd federation sync`\n- federation.exclude_types config key documented and defaulted to ['wisp']\n- CHANGELOG.md entry calls out the behavior change\n- Opt-out via federation.exclude_types = [] works\n- Cross-version migration test passes\n\n## Non-goals\n\n- Not changing federation conflict resolution\n- Not adding label-based federation filtering (separate scope)"
+    },
+    {
+      "key": "task-pr3",
+      "title": "Open PR-3: OAuth client-credentials support for linear.Client",
+      "type": "task",
+      "priority": 1,
+      "parent_key": "epic-upstream",
+      "labels": ["upstream-pr", "architecture-blocker"],
+      "description": "New file internal/linear/oauth.go implementing OAuth client-credentials grant against Linear's token endpoint. New config keys linear.oauth_client_id, linear.oauth_client_secret (yaml-only). Modify internal/linear/client.go to send `Authorization: Bearer <token>` when OAuth is configured, fall back to personal-key behavior otherwise. Token caching with 30-day TTL and auto-refresh on 401.\n\n**ARCHITECTURE BLOCKER** — required for the centralized CI writer to run as actor=app. See PLAN.md §6 PR-3 for full scope.\n\n## Acceptance criteria\n\n- OAuth-configured client sends Bearer token on requests\n- 401 triggers token refresh\n- Personal API key path unchanged when OAuth not configured\n- Mock OAuth token endpoint in internal/linear/oauth_test.go\n- Roundtrip test with OAuth-configured client\n- Cross-version migration test passes\n\n## Non-goals\n\n- Not implementing OAuth authorization-code flow (only client-credentials)\n- Not implementing per-scope token requests"
+    },
+    {
+      "key": "task-pr4",
+      "title": "Open PR-4: issueBatchCreate and issueBatchUpdate adoption",
+      "type": "task",
+      "priority": 1,
+      "parent_key": "epic-upstream",
+      "labels": ["upstream-pr", "architecture-blocker", "performance"],
+      "description": "Implement tracker.BatchPushTracker interface (already defined at internal/tracker/types.go:62-65) on linear.Tracker. Add BatchCreate and BatchUpdate on linear.Client emitting issueBatchCreate (50/call) and issueBatchUpdate. Engine routes through BatchPush() when implemented. Graceful degradation: if a batch call fails, fall back to per-issue mutations for that batch.\n\n**ARCHITECTURE BLOCKER** — required for efficient centralized writer. See PLAN.md §6 PR-4 for full scope.\n\n## Acceptance criteria\n\n- 50 issues push as 1 mutation, not 50\n- Partial-failure batch (5 errors out of 50) falls back to single mutations for the 5 failures\n- Smaller pushes (<50 issues) work via existing path\n- Mock GraphQL test with batch response\n- Charter-compliance noted (efficiency improvement of existing surface)\n\n## Non-goals\n\n- Not adding batch comments (Linear doesn't support)\n- Not parallelizing multiple batches (sequential is fine for now)"
+    },
+    {
+      "key": "task-pr5",
+      "title": "Open PR-5: idempotency markers on Linear issue creation",
+      "type": "task",
+      "priority": 1,
+      "parent_key": "epic-upstream",
+      "labels": ["upstream-pr", "architecture-blocker"],
+      "description": "Generate `sha256(beads_id + title + creator_email + creation_ts_ns)[:12]` per bead at creation. Embed in Linear description as `<!-- bd-idempotency: <hash> -->`. Pre-create query: search the team for issues with matching marker; if found, link existing as external_ref instead of creating duplicate.\n\n**ARCHITECTURE BLOCKER** — solves duplicate creation under sync interruption. See PLAN.md §6 PR-5 for full scope.\n\n## Acceptance criteria\n\n- Sync interrupted between create and external_ref update; re-run sync detects existing Linear issue via marker, links it, no duplicate created\n- Two devs creating beads with the same content: second push finds and links the first\n- Roundtrip test with mock GraphQL\n- Backward-compatible: existing Linear issues without markers still match via existing logic\n\n## Non-goals\n\n- Not changing the marker format (HTML comment is the interoperable choice)\n- Not exposing the marker as a beads field"
+    },
+    {
+      "key": "task-pr6",
+      "title": "Open PR-6: Retry-After header parsing and adaptive backoff",
+      "type": "task",
+      "priority": 2,
+      "parent_key": "epic-upstream",
+      "labels": ["upstream-pr", "rate-limit"],
+      "description": "In internal/linear/client.go:163-197, parse X-RateLimit-* headers and Retry-After. Prefer server-hint delay over computed exponential backoff when present. Circuit breaker: pause sync when remaining quota drops below linear.rate_limit_floor (default 100). Address the thundering-herd retry amplification pattern from GH#3623.\n\nSee PLAN.md §6 PR-6 for full scope.\n\n## Acceptance criteria\n\n- Mock 429 response with Retry-After: 30 → next request waits 30s, not computed backoff\n- Circuit breaker pauses sync when remaining quota <100\n- Behavior unchanged when headers absent\n- SyncStats surfaces circuit-breaker activation as a warning\n\n## Non-goals\n\n- Not implementing per-endpoint rate limit tracking (Linear doesn't expose enough headers)\n- Not implementing token bucket on the client side (server enforces)"
+    },
+    {
+      "key": "task-pr7",
+      "title": "Open PR-7: per-workspace concurrency lock on bd linear sync",
+      "type": "task",
+      "priority": 3,
+      "parent_key": "epic-upstream",
+      "labels": ["upstream-pr"],
+      "description": "Acquire .beads/.linear-sync.lock at start of `bd linear sync` to serialize concurrent invocations. SIGTERM releases cleanly. Document the lock contract.\n\nSee PLAN.md §6 PR-7 for full scope.\n\n## Acceptance criteria\n\n- Two concurrent `bd linear sync` invocations: one acquires lock, second waits or fails-fast (configurable)\n- `go test -race ./internal/linear` passes\n- Stale lock detection (lock holder died without releasing)\n\n## Non-goals\n\n- Not implementing distributed lock for multi-machine sync (single-workspace scope only)"
+    },
+    {
+      "key": "task-pr8",
+      "title": "Open PR-8: persistent sync audit log",
+      "type": "task",
+      "priority": 3,
+      "parent_key": "epic-upstream",
+      "labels": ["upstream-pr", "observability"],
+      "description": "New Dolt table linear_sync_history. Persist SyncResult per run with per-issue outcome, errors, timing. Surface via `bd linear history` subcommand.\n\nSee PLAN.md §6 PR-8 for full scope.\n\n## Acceptance criteria\n\n- `bd linear sync` writes a row per push to linear_sync_history\n- `bd linear history --since=2026-05-01` returns prior sync runs\n- `make test-upgrade` passes (cross-version migration of new table)\n\n## Non-goals\n\n- Not implementing log compaction (separate concern)\n- Not exposing history via CLI filters beyond --since"
+    },
+    {
+      "key": "task-ci-worker",
+      "title": "Build CI worker for centralized Linear push (org-internal)",
+      "type": "task",
+      "priority": 2,
+      "parent_key": "epic-arch",
+      "labels": ["org-internal", "ci"],
+      "description": "Create .github/workflows/linear-sync.yml (or org's equivalent). Triggers on push events to main that touch .beads/issues.jsonl. Steps: `bd import` from JSONL → `bd linear sync --push --json` → commit external_refs back to main → archive sync_history JSON. OAuth client-credentials in CI secrets. Lives in beads-to-linear repo (org-internal, not upstream).\n\n## Acceptance criteria\n\n- Workflow runs end-to-end on a no-op push event\n- Push event with new bead creates issue in Linear\n- Push event with bead update updates Linear\n- External_refs committed back to main\n- sync_history JSON archived\n- Failed runs surface via existing CI alerting\n- README documents trigger behavior and CI secrets required\n\n## Non-goals\n\n- Not implementing webhook-style triggers (charter forbids upstream; org choice for org-internal)\n- Not implementing parallel workers (sequential is fine until throughput is a problem)"
+    },
+    {
+      "key": "task-pull-cron",
+      "title": "Build per-laptop pull cron installer (org-internal)",
+      "type": "task",
+      "priority": 3,
+      "parent_key": "epic-arch",
+      "labels": ["org-internal", "tooling"],
+      "description": "Create scripts/install-pull-cron.sh that installs a per-developer cron job for `bd linear sync --pull` with jitter. Validates LINEAR_API_KEY env var presence. Refuses to install if linear.api_key is set in .beads/config.yaml (defense-in-depth complement to PR-1).\n\n## Acceptance criteria\n\n- install-pull-cron.sh installs cron job\n- Cron job runs `bd linear sync --pull --prefer-linear` with random sleep up to 180s for jitter (15-min cadence per decision-pull-cadence)\n- Refuses install if linear.api_key in config.yaml\n- uninstall command removes cron job\n- Documented in docs/onboarding/\n\n## Non-goals\n\n- Not building a daemon (cron is sufficient)\n- Not building a per-laptop UI for managing the cron"
+    },
+    {
+      "key": "task-runbook",
+      "title": "Write Linear sync operations runbook (org-internal)",
+      "type": "task",
+      "priority": 3,
+      "parent_key": "epic-arch",
+      "labels": ["org-internal", "docs"],
+      "description": "Create docs/runbooks/linear-sync.md covering: adding a new dev, offboarding a dev, rotating OAuth credentials, handling Linear API outage, debugging a sync conflict, adding a new Linear team, recovering from 'we synced 50,000 bad updates', reading the sync audit log.\n\n## Acceptance criteria\n\n- Each scenario in the description has a step-by-step section\n- Each section references specific commands, file paths, and expected outputs\n- New devs can complete onboarding from the runbook alone\n\n## Non-goals\n\n- Not duplicating bd's own documentation (link to it)\n- Not writing per-team customizations (org runbook only)"
+    },
+    {
+      "key": "task-backfill",
+      "title": "Build Jira → Linear → beads backfill script (org-internal)",
+      "type": "task",
+      "priority": 4,
+      "parent_key": "epic-arch",
+      "labels": ["org-internal", "migration"],
+      "description": "Create scripts/jira-to-linear-backfill.sh orchestrating the 5-step sequence in PLAN.md §8: Linear's native Jira import, stabilize, beads create-only push, beads ↔ Linear external_ref reconciliation, switch to bidirectional. Includes dry-run mode.\n\nScope per decision-backfill-scope: all open Jira issues + last 12 months of closed; older closed stays in Jira archive.\n\n## Acceptance criteria\n\n- Dry-run mode previews each step's actions\n- Live mode runs the full sequence with confirmation prompts between steps\n- Idempotent (re-running picks up where it left off)\n- Documented usage in docs/runbooks/\n\n## Non-goals\n\n- Not implementing reverse migration (Linear → Jira)\n- Not handling per-team customizations of the import (manual step)"
+    },
+    {
+      "key": "spike-oauth-app",
+      "title": "Spike: provision Linear OAuth app and validate actor=app behavior",
+      "type": "spike",
+      "priority": 2,
+      "parent_key": "epic-arch",
+      "labels": ["spike", "oauth"],
+      "description": "Workspace admin action: create OAuth app at Linear's developer portal in the sandbox workspace (https://linear.app/kevglynn), enable client_credentials grant. Test fetching a token, making an actor=app mutation, observing the resulting issue history attribution. Validate that dynamic rate limits scale per Cluster B's documentation.\n\nValidates the assumption underlying PR-3 (OAuth client-credentials) before that PR is opened.\n\n## Acceptance criteria\n\n- OAuth app exists in sandbox, client_credentials grant enabled\n- Successfully fetch access token via curl\n- Create test issue with actor=app, verify creator displays as the app, not a user\n- Document the workspace's actual rate limit ceiling from response headers\n- Findings noted in this bead's resolution and in PLAN.md appendix\n\n## Non-goals\n\n- Not productionizing the credential (that's task-ci-worker)\n- Not implementing token refresh in code (that's task-pr3)"
+    },
+    {
+      "key": "decision-credential-strategy",
+      "title": "Decide: per-laptop pull credential strategy",
+      "type": "decision",
+      "priority": 2,
+      "parent_key": "epic-arch",
+      "labels": ["adr", "credentials"],
+      "description": "See PLAN.md §9 Open Decision #3.\n\n**Resolved (2026-05-01)**: option (a) — personal Linear API key per developer, exported as LINEAR_API_KEY env var only. Migrate to OAuth client-credentials (option c) once PR-3 ships and Linear's OAuth scope model supports per-process scoping cleanly.\n\nReasoning: (a) is the minimum viable today and matches the auth method developers are already familiar with from Linear's UI. (b) creates a shared-secret rotation problem. (c) is the long-term clean answer.\n\n## Acceptance criteria\n\n- Decision documented in this bead (above)\n- Communicated to all pilot devs (becomes part of task-runbook content)\n- Pre-commit hook updated by PR-1 to enforce the chosen mechanism (block if linear.api_key in config.yaml)"
+    },
+    {
+      "key": "decision-pull-cadence",
+      "title": "Decide: per-laptop pull cadence",
+      "type": "decision",
+      "priority": 3,
+      "parent_key": "epic-arch",
+      "labels": ["adr"],
+      "description": "See PLAN.md §9 Open Decision #8.\n\n**Resolved (2026-05-01)**: option (a) — 15-min cron with jitter (random sleep up to 180s).\n\nReasoning: 15 minutes is well within agent-workflow tolerances; reduces aggregate pull traffic to comfortable levels. Charter forbids webhooks so sub-minute reads are not available; the trade-off is between read latency and aggregate pull traffic.\n\n## Acceptance criteria\n\n- Cadence decision documented (above)\n- task-pull-cron's install-pull-cron.sh implements 15-min cadence with jitter"
+    },
+    {
+      "key": "decision-conflict-policy",
+      "title": "Decide: per-laptop pull conflict resolution policy",
+      "type": "decision",
+      "priority": 2,
+      "parent_key": "epic-arch",
+      "labels": ["adr"],
+      "description": "See PLAN.md §9 Open Decision #5.\n\n**Resolved (2026-05-01)**: option (a) — `--prefer-linear`.\n\nReasoning: the CI worker's writes are authoritative; per-laptop pulls accept Linear's version on conflict. Any other choice creates the silent-overwrite failure mode the architecture exists to prevent. Devs who need to override Linear can do so by editing locally and pushing through git, which the CI worker will then push to Linear in the normal way.\n\n## Acceptance criteria\n\n- Policy documented (above)\n- task-pull-cron's install-pull-cron.sh and CI worker invocations both pass `--prefer-linear`"
+    }
+  ],
+  "edges": [
+    {"from_key": "task-pr1", "to_key": "task-pr0", "type": "blocks"},
+    {"from_key": "task-pr2", "to_key": "task-pr0", "type": "blocks"},
+    {"from_key": "task-pr3", "to_key": "task-pr1", "type": "blocks"},
+    {"from_key": "task-pr4", "to_key": "task-pr3", "type": "blocks"},
+    {"from_key": "task-pr5", "to_key": "task-pr4", "type": "blocks"},
+    {"from_key": "task-pr6", "to_key": "task-pr3", "type": "blocks"},
+    {"from_key": "task-pr7", "to_key": "task-pr3", "type": "blocks"},
+    {"from_key": "task-pr8", "to_key": "task-pr7", "type": "blocks"},
+    {"from_key": "task-ci-worker", "to_key": "task-pr3", "type": "blocks"},
+    {"from_key": "task-ci-worker", "to_key": "task-pr4", "type": "blocks"},
+    {"from_key": "task-ci-worker", "to_key": "task-pr5", "type": "blocks"},
+    {"from_key": "task-pull-cron", "to_key": "task-pr1", "type": "blocks"},
+    {"from_key": "task-backfill", "to_key": "task-ci-worker", "type": "blocks"}
+  ]
+}
