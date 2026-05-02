@@ -603,6 +603,7 @@ Each row is a real choice the human owner must make. Status: **RESOLVED** means 
 
 | d14 | OAuth client identity strategy | **(a) One OAuth app per org** | Single credential to rotate, single audit trail, simplest secret management. | 2026-05-02 |
 | d15 | OAuth spike: client_credentials validation | **VALIDATED** | Provisioned `beads-sync-bot` OAuth app in Linear. `client_credentials` grant works with explicit `scope=read,write`. Token TTL=30 days (needs refresh logic). `actor=application` gives bot identity (`beads-sync-bot`), synthetic email, separate from personal accounts. Rate limits standard: 2M complexity / 5K requests per hour. App is private to workspace. | 2026-05-02 |
+| d16 | Eager pull after cron failure | **Ambient staleness signal (no retry infra)** | Three adversarial reviewers (architecture, performance, agent-native) converged: retry mechanisms are the wrong layer for a local-first system. Instead: `bd prime` auto-pulls when stale (>20 min), `bd linear sync --pull-if-stale` provides composable primitive, `.beads/last_pull` timestamp file is the foundation. Morning storm (50 devs at 9 AM) = 1% of rate limits. Keep 15-min cron as background heartbeat. Don't add to agent rules — let the tool own it. Bead: `btl-seo`. | 2026-05-02 |
 
 ### Open decisions
 
