@@ -1,6 +1,19 @@
 # Agent Instructions
 
-This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
+## Project Context
+
+**beads-to-linear** syncs local-first beads issue tracking with Linear for
+org-wide visibility. Devs keep using beads locally; a CI worker is the sole
+Linear writer; a per-laptop cron pulls Linear updates back. No dev ever
+touches Linear directly. PMs get a live board without double-entry.
+
+This repo holds planning artifacts (`PLAN.md`), tracked beads (`btl-*`
+prefix), and org-internal tooling (CI workflow, cron installer, runbook,
+backfill script). Improvements to beads itself go upstream as PRs to
+[gastownhall/beads](https://github.com/gastownhall/beads).
+
+See `PLAN.md` §1a for persona-specific descriptions and §5 for the
+architecture diagram.
 
 ## Quick Reference
 

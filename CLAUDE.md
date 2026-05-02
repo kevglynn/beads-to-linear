@@ -1,11 +1,42 @@
 # Project Instructions for AI Agents
 
-This file provides instructions and context for AI coding agents working on this project.
+## What This Project Is
+
+**beads-to-linear** is a planning workspace and org-internal tooling repo for
+synchronizing local-first [beads](https://github.com/gastownhall/beads) issue
+tracking with [Linear](https://linear.app) as the org-wide source of truth.
+
+**The deployed system works like this:** Devs use beads locally — `bd create`,
+`bd close`, `bd list` — exactly as they do today. When they `git push`, their
+`.beads/issues.jsonl` goes with it. A CI worker (the sole Linear writer) picks
+up the delta and pushes to Linear via `bd linear sync --push`. A per-laptop
+cron pulls updates back from Linear every 15 minutes via `bd linear sync
+--pull --prefer-linear`. Devs never touch Linear directly; PMs see a
+continuously-current Linear board without anyone doing double-entry.
+
+**This repo contains:**
+- `PLAN.md` — the architecture and execution plan (source of truth for decisions)
+- `docs/initial-bead-plan.json` — the graph-apply seed that created 19 tracked beads
+- Org-internal tooling (CI workflow, cron installer, runbook, backfill script) — to be built
+- Planning artifacts only; the actual beads improvements go upstream as PRs to `gastownhall/beads`
+
+**Key repos:**
+- Upstream beads: `gastownhall/beads` (https://github.com/gastownhall/beads)
+- Kevin's fork: `kevglynn/beads` (https://github.com/kevglynn/beads)
+- This repo: `kevglynn/beads-to-linear` (https://github.com/kevglynn/beads-to-linear)
+- Sandbox Linear workspace: https://linear.app/kevglynn
+
+See `PLAN.md` §1a for per-persona descriptions of what the deployed system
+looks like (devs, PMs, repo owners, project lead).
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker
 
 This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
+
+Bead prefix: `btl-`. Two epics: `btl-0bk` (centralized sync architecture),
+`btl-9pf` (upstream PRs to gastownhall/beads). Run `bd ready` to see
+actionable work.
 
 ### Quick Reference
 
@@ -52,18 +83,27 @@ bd close <id>         # Complete work
 
 ## Build & Test
 
-_Add your build and test commands here_
+This repo is primarily docs and scripts — no build step. Validate with:
 
 ```bash
-# Example:
-# npm install
-# npm test
+bd status             # Check bead database health
+bd ready              # See actionable work
+python3 -c "import json; json.load(open('docs/initial-bead-plan.json'))"  # Validate plan JSON
 ```
 
 ## Architecture Overview
 
-_Add a brief overview of your project architecture_
+See `PLAN.md` §5 for the full architecture with Mermaid diagram. In short:
+
+- **Write path:** Dev laptops → `git push` (carries `.beads/issues.jsonl`) → CI worker → Linear API
+- **Read path:** Linear API → per-laptop `bd linear sync --pull` on 15-min jittered cron
+- **Single writer:** Only the CI worker pushes to Linear (OAuth `actor=app`). Devs never push.
+- **Conflict policy:** `--prefer-linear` on pulls. Linear is the org source of truth.
+- **Privacy:** Wisps/ephemeral beads are excluded at export time; they never reach Linear or git.
 
 ## Conventions & Patterns
 
-_Add your project-specific conventions here_
+- All architecture decisions are in `PLAN.md` §9 (resolved) and tracked as `decision`-type beads
+- Upstream PRs to gastownhall/beads are tracked as `task-prN` beads under `epic-upstream` (btl-9pf)
+- Org-internal tooling is tracked under `epic-arch` (btl-0bk)
+- Issue prefix is `btl-` (set via `bd rename-prefix`)

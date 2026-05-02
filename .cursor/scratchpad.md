@@ -4,14 +4,23 @@
 
 Owner: Kevin Glynn (top contributor to `gastownhall/beads` on GitHub).
 
-New leadership wants to migrate the org from **Jira → Linear**, and wants
-**all locally-tracked beads to be synchronized to Linear** so Linear remains
-the org-wide source of authority while devs keep using beads' local-first,
-agent-friendly workflow on their laptops.
+**What we're building:** A sync layer so devs keep using beads locally
+while Linear automatically reflects their work for PMs and leadership.
+One CI worker is the sole Linear writer (pushes on every `git push`);
+per-laptop crons pull Linear updates back every 15 minutes. No dev
+touches Linear directly. No double-entry. PMs get a live board.
 
-Strategic angle: a successful integration could be contributed back upstream
-as a PR to `gastownhall/beads`, since Linear is positioned to become a
-dominant post-AI-era issue tracker.
+**What this repo is:** Planning workspace + org-internal tooling (CI
+workflow, cron installer, runbook, backfill script). Improvements to
+beads itself go upstream as PRs to `gastownhall/beads`.
+
+**Strategic angle:** Successful integration gets contributed back upstream,
+positioning beads as the local-first agent-native frontend to Linear in
+the post-AI-era issue tracking landscape.
+
+**Deployment model:** Opt-in per team. Prove with a pilot team first
+against the sandbox workspace (`linear.app/kevglynn`), then roll out
+org-wide. Teams that don't opt in are unaffected.
 
 ## Key Challenges and Analysis
 
