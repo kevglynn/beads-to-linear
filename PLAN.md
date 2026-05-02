@@ -17,6 +17,71 @@
 
 ---
 
+## 1a. What We're Building (by Persona)
+
+### For developers (day-to-day)
+
+Nothing changes about how you work locally. You still use `bd create`, `bd update`, `bd close`, `bd list` exactly like today. Your local `.beads/` database is still yours, still works offline, still powers your agents.
+
+Two new things happen automatically:
+
+1. **Your beads show up in Linear.** When you `git push`, your project's `.beads/issues.jsonl` file goes with it (this already happens via the pre-commit hook). A CI job notices the push, reads the JSONL, and creates/updates the corresponding Linear issues. You never talk to Linear directly on the write path.
+
+2. **Linear updates trickle back to your laptop.** A background cron runs `bd linear sync --pull` every 15 minutes. If your PM changes a priority in Linear, or a teammate closes something in Linear's UI, you see it locally within 15 minutes. No action needed — it just appears in `bd list`.
+
+**Setup per dev:** Export `LINEAR_API_KEY` in your shell profile (you generate this once in Linear's settings). Run an install script. Done.
+
+**What you don't do:** You never run `bd linear sync --push`. You never log into Linear to create issues. You never configure team IDs or mappings. You just use beads like always, and Linear stays in sync.
+
+### For product managers
+
+Linear becomes your single pane of glass — and it's always current without anyone doing manual data entry.
+
+You work in Linear like normal: triaging the backlog, setting priorities, adjusting statuses, writing comments, building roadmap views. The difference is that your board is being fed by real engineering work happening in beads, not by devs remembering to update a ticket.
+
+**What you see:** Issues appearing in Linear that correspond to what devs are actually working on. Statuses that reflect reality — when a dev closes a bead locally, the corresponding Linear issue moves to "Done" on the next CI run (within minutes of their push). When a dev creates a new task, it shows up in Linear without anyone asking them to file a ticket.
+
+**What you can do:** Change priorities in Linear, add labels, update statuses, reassign. Those changes flow back to devs' laptops on the 15-minute pull cycle. If you mark something as urgent in Linear, the dev sees it locally in their `bd list` output within 15 minutes.
+
+**What you don't have to do:** Chase devs to update tickets. Run "ticket hygiene" meetings. Wonder if the board reflects reality. The board IS reality because it's fed by the same tool devs use to do their actual work.
+
+**One caveat to understand:** Not everything a dev tracks locally shows up in Linear. Devs have "wisps" — throwaway scratch notes and draft thoughts that are intentionally private. Only real work items (tasks, bugs, features, stories, epics) make it to Linear. This means your Linear board isn't cluttered with every half-formed thought a dev had at 2am.
+
+### For repo owners and eng ops
+
+You maintain one CI workflow per repo that has beads. It's a GitHub Actions (or equivalent) YAML file that:
+
+- Triggers on pushes to `main` that touch `.beads/issues.jsonl`
+- Runs `bd linear sync --push` using a single OAuth credential stored in CI secrets
+- Commits the resulting `external_ref` links back to `main` (so other devs know which bead maps to which Linear issue)
+- Archives a JSON log of what it synced
+
+You own the OAuth credential. One app registered in Linear, one client_id + client_secret pair, stored in your CI system's secrets. When someone leaves the org, nothing changes — individual devs' personal read-only keys are their own; the write credential is org-owned.
+
+You decide which teams opt in. A team opts in by adding the CI workflow to their repo and having their devs run the cron installer. Teams that don't opt in are unaffected.
+
+Monitoring: CI failures surface through your existing CI alerting. The sync produces structured logs. If something goes wrong, the runbook covers recovery (including "we synced bad data — here's how to revert").
+
+### For the project lead (Kevin)
+
+Three hats:
+
+1. **Upstream contributor to gastownhall/beads.** File ~9 PRs that make `bd linear` better for everyone — security fix (stop writing API keys to git-tracked files), OAuth support, batch mutations, idempotency, rate-limit handling. These are independently valuable contributions. The canary PR (type mapping) goes first to build reviewer trust.
+
+2. **Architect of the org rollout.** Own `beads-to-linear` as the planning workspace and the home for org-specific tooling (CI workflow template, cron installer, runbook, backfill script). This is a thin layer — most of the heavy lifting is in beads itself.
+
+3. **Pilot lead.** Prove this out with your own team first using the sandbox Linear workspace (`linear.app/kevglynn`). Once it's solid, hand the pattern to other teams as opt-in. The ai-dev-playbook can eventually consume the proven patterns (e.g., `playbook-init.sh --linear` installs the cron and validates credentials).
+
+### In lay terms
+
+**Today:** Devs track their work in beads on their laptops. Management can't see it unless they look over a dev's shoulder. Jira exists but nobody likes it.
+
+**After this ships:** Devs keep using beads exactly like before. But now, every time they push code, their beads automatically appear in Linear — the tool management actually wants to use. Management gets their dashboards, priorities, and status views in Linear. Devs never have to open Linear or do double-entry. One robot (the CI worker) is the only thing that talks to Linear's write API, so there's no chaos from 50 people syncing at once.
+
+**The analogy:** It's like how your email client syncs to Gmail's servers. You write emails in your client (beads). Gmail (Linear) is where everyone else sees them. There's a sync process in the background. You don't think about it.
+
+---
+
 ## 2. Current State (Verified)
 
 All claims below were verified by direct reading of `gastownhall/beads` source via `/Users/kevinglynn/beads/` (local clone) and the GitHub API. Specific file/line references are anchored against commit `e19e31c191827c577437c4ab4a9946fa305c4d24`.
