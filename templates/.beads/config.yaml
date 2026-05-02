@@ -1,0 +1,49 @@
+# beads-to-linear org config template
+# Copy relevant sections to your project's .beads/config.yaml
+# Do NOT put secrets (API keys, tokens) in this file — use env vars instead
+#   export LINEAR_API_KEY="lin_api_..."
+
+# Linear integration
+linear:
+  # Team IDs to sync with (comma-separated for multi-team)
+  team_ids: "KEV"
+
+  # ID generation mode
+  id_mode: "hash"
+  hash_length: 6
+
+  # Priority mapping (beads priority → Linear priority)
+  # Linear priorities: 0=No priority, 1=Urgent, 2=High, 3=Medium, 4=Low
+  priority_map:
+    "1": 1  # P1 → Urgent
+    "2": 2  # P2 → High
+    "3": 3  # P3 → Medium
+    "4": 4  # P4 → Low
+
+  # State mapping (beads status → Linear state name)
+  state_map:
+    open: "Todo"
+    in_progress: "In Progress"
+    closed: "Done"
+    deferred: "Backlog"
+
+  # Type-to-label mapping (beads type → Linear label name)
+  label_type_map:
+    task: "task"
+    bug: "bug"
+    feature: "feature"
+    epic: "epic"
+    chore: "chore"
+    decision: "decision"
+    spike: "spike"
+    story: "story"
+    milestone: "milestone"
+
+  # Rate limit safety — stop syncing if remaining requests drop below this
+  rate_limit_floor: 100
+
+# Federation (if used)
+federation:
+  exclude_types:
+    - wisp
+    - memory
