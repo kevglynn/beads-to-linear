@@ -1,0 +1,167 @@
+name: Sync Health Monitor
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch: {}
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      contents: read
+      issues: write         # needed to create/label alert issues
+      actions: read         # needed to query workflow run history
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: |
+          if ! command -v jq &>/dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq jq
+          fi
+
+      - name: Run health check
+        id: health
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          json_output="$(bash scripts/sync-health-check.sh --json --repo "${{ github.repository }}")"
+          exit_code=$?
+          set -e
+
+          echo "exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
+          echo "status=$(echo "$json_output" | jq -r '.status')" >> "$GITHUB_OUTPUT"
+
+          # Save full JSON for downstream steps
+          echo "$json_output" > /tmp/health-check-result.json
+
+          # Post as workflow annotation
+          case "$exit_code" in
+            0) echo "::notice::Sync health: HEALTHY" ;;
+            1) echo "::warning::Sync health: WARNING — check results for details" ;;
+            2) echo "::error::Sync health: CRITICAL — immediate attention required" ;;
+          esac
+
+          # Show human-readable output in logs too
+          bash scripts/sync-health-check.sh --agent --repo "${{ github.repository }}" || true
+
+      - name: Check for escalation (3+ consecutive warnings)
+        id: escalation
+        if: steps.health.outputs.exit_code == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Count recent consecutive non-success runs of THIS workflow
+          runs_json="$(gh run list --workflow=sync-health-monitor.yml \
+            --repo "${{ github.repository }}" --limit 5 \
+            --json conclusion 2>/dev/null || echo '[]')"
+
+          consecutive_warns="$(echo "$runs_json" | jq '
+            [.[] | .conclusion]
+            | [limit(length; range(length)) as $i
+               | if .[$i] == "success" then $i else empty end]
+            | .[0] // length')"
+
+          echo "consecutive_warns=${consecutive_warns}" >> "$GITHUB_OUTPUT"
+
+          if [[ "$consecutive_warns" -ge 3 ]]; then
+            echo "escalate=true" >> "$GITHUB_OUTPUT"
+            echo "::error::Escalating: ${consecutive_warns} consecutive warning health checks"
+          else
+            echo "escalate=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create alert issue (critical or escalated warning)
+        if: |
+          steps.health.outputs.exit_code == '2' ||
+          steps.escalation.outputs.escalate == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          status="${{ steps.health.outputs.status }}"
+          severity="warning"
+          if [[ "${{ steps.health.outputs.exit_code }}" == "2" ]]; then
+            severity="critical"
+          fi
+
+          title="[sync-alert] ${severity^^}: sync health check $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          # Check if a recent open alert already exists (avoid duplicates)
+          existing="$(gh issue list --repo "${{ github.repository }}" \
+            --label sync-alert --state open --limit 1 --json number 2>/dev/null || echo '[]')"
+          existing_count="$(echo "$existing" | jq 'length')"
+
+          if [[ "$existing_count" -gt 0 ]]; then
+            issue_number="$(echo "$existing" | jq -r '.[0].number')"
+            # Append a comment to the existing issue
+            body="$(cat <<COMMENT
+## Health check update — $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+**Status:** ${severity^^}
+**Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+<details>
+<summary>Full JSON result</summary>
+
+\`\`\`json
+$(cat /tmp/health-check-result.json | jq '.')
+\`\`\`
+
+</details>
+COMMENT
+)"
+            gh issue comment "$issue_number" --repo "${{ github.repository }}" --body "$body"
+            echo "::notice::Updated existing alert issue #${issue_number}"
+          else
+            # Create a new issue
+            body="$(cat <<ISSUE
+## Sync Health Alert
+
+**Severity:** ${severity^^}
+**Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)
+**Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+### Checks
+
+$(cat /tmp/health-check-result.json | jq -r '.checks[] | "- **\(.check)** [\(.status)]: \(.detail)"')
+
+### Actions
+
+- Check [CI Worker Troubleshooting](docs/runbooks/linear-sync.md#9-ci-worker-troubleshooting)
+- Check [Monitoring and Alerting](docs/runbooks/linear-sync.md#10-monitoring-and-alerting)
+- Run \`bash scripts/sync-health-check.sh\` locally for live diagnostics
+
+### Resolution
+
+Close this issue when the root cause is resolved and the health check returns healthy.
+ISSUE
+)"
+            # Ensure the sync-alert label exists
+            gh label create sync-alert --color D93F0B --description "Automated sync health alert" \
+              --repo "${{ github.repository }}" 2>/dev/null || true
+
+            gh issue create --repo "${{ github.repository }}" \
+              --title "$title" \
+              --body "$body" \
+              --label "sync-alert"
+
+            echo "::notice::Created new alert issue"
+          fi
+
+      - name: Upload health check result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: health-check-${{ github.run_id }}
+          path: /tmp/health-check-result.json
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Set exit code
+        run: exit ${{ steps.health.outputs.exit_code }}
