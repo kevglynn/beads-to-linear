@@ -732,6 +732,14 @@ bash scripts/audit/query-archived.sh --since 30d
 - Access to CI logs (GitHub Actions or equivalent)
 - Access to CI secrets management
 
+### Quick reference
+
+| Script | Purpose | Invocation |
+|--------|---------|------------|
+| `scripts/ci-linear-push.sh` | CI worker push entrypoint | Called by workflow; also `bash scripts/ci-linear-push.sh --dry-run` locally |
+| `scripts/ci-linear-push.sh --max-delta N` | Override volume safety threshold | When a legitimate bulk push is needed |
+| `scripts/lib/external-refs.sh --self-test` | Validate external refs library | `bash scripts/lib/external-refs.sh --self-test` |
+
 ### Check CI logs
 
 ```bash
@@ -740,9 +748,49 @@ gh run list --workflow=linear-sync.yml --repo <org>/<repo> --limit 5
 
 # View logs for a specific run
 gh run view <run-id> --repo <org>/<repo> --log
+
+# Download sync log artifact
+gh run download <run-id> --repo <org>/<repo> --name sync-log-<run-id>
 ```
 
 ### Common failures
+
+#### Push-volume safety check blocked (exit code 2)
+
+**Symptoms:** Logs show `Push-volume safety check FAILED` with exit code 2.
+
+**Cause:** More new beads (without existing external refs) than the
+`BTL_MAX_PUSH_DELTA` threshold (default: 100). This usually means a bad
+merge brought in a large JSONL, a bulk import, or corrupted data.
+
+**Diagnosis:**
+
+```bash
+# Check how many beads lack external refs
+jq -r '.id' .beads/issues.jsonl | wc -l
+jq '.refs | length' .beads/external_refs.json
+```
+
+**Resolution:**
+- If the push is legitimate (e.g., first sync of a large project): re-run
+  the workflow via `workflow_dispatch` with a higher `max_delta` value, or
+  set `BTL_MAX_PUSH_DELTA=<N>` in the CI environment.
+- If the push is accidental (bad merge): revert the commit, fix the JSONL,
+  and push again.
+
+#### bd not found or build failure
+
+**Symptoms:** `bd is not on PATH` or Go compilation errors during the
+"Install bd" step.
+
+**Diagnosis:** The workflow installs bd from the `gastownhall/beads` GitHub
+releases or builds from source using Go. Check:
+- Is the `BD_VERSION` in the workflow YAML still valid?
+- Is `gastownhall/beads` accessible from the runner?
+- Is Go available on the runner?
+
+**Resolution:** Update `BD_VERSION` in `.github/workflows/linear-sync.yml`
+to match the latest beads release tag.
 
 #### Rate limit hit (HTTP 429)
 
@@ -813,7 +861,17 @@ grep -n "^<<<<<<\|^======\|^>>>>>>" .beads/issues.jsonl
 #### Manual re-run
 
 ```bash
+# Normal re-run
 gh workflow run linear-sync.yml --repo <org>/<repo>
+
+# Dry-run (no Linear writes, no git push)
+gh workflow run linear-sync.yml --repo <org>/<repo> -f dry_run=true
+
+# Override push-volume safety threshold
+gh workflow run linear-sync.yml --repo <org>/<repo> -f max_delta=500
+
+# Local dry-run for debugging (requires LINEAR_API_KEY or OAuth env vars)
+bash scripts/ci-linear-push.sh --dry-run
 ```
 
 Or from the GitHub Actions UI: navigate to the workflow → "Run workflow" button.
