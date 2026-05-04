@@ -126,7 +126,8 @@ jobs:
             $BD_CFG "linear.state_map.in progress" "in_progress"
             $BD_CFG linear.state_map.done "closed"
           fi
-          # Priority map is 1:1 (beads P1 → Linear P1, etc.)
+          # Priority map: 0 = No Priority, 1-4 are 1:1
+          $BD_CFG linear.priority_map.0 0
           for p in 1 2 3 4; do
             $BD_CFG linear.priority_map.$p $p
           done
