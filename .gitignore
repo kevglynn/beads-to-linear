@@ -4,3 +4,4 @@
 .beads-credential-key
 .dolt/
 .review/
+.backfill-state.json

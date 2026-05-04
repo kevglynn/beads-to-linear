@@ -237,7 +237,7 @@ check_coverage() {
 
   # Count beads that have external refs
   if [[ -f "$EXTERNAL_REFS_FILE" ]]; then
-    covered="$(jq '.refs | length' "$EXTERNAL_REFS_FILE" 2>/dev/null || echo 0)"
+    covered="$(jq 'length' "$EXTERNAL_REFS_FILE" 2>/dev/null || echo 0)"
   fi
 
   local coverage_pct

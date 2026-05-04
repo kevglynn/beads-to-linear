@@ -176,7 +176,8 @@ def check_fidelity(linear_issues, jsonl_beads, sync_log_path, external_refs_path
     print("\n── External Refs File ──")
     if os.path.exists(external_refs_path):
         with open(external_refs_path) as f:
-            refs = json.load(f)
+            data = json.load(f)
+        refs = data.get("refs", data) if isinstance(data, dict) and "refs" in data else data
         jsonl_ids = {b.get("id") for b in jsonl_beads.values()}
         orphan_refs = [k for k in refs if k not in jsonl_ids]
         print(f"  Entries:  {len(refs)}")

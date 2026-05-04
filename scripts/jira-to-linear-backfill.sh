@@ -148,7 +148,7 @@ read_state() {
 update_state() {
   local tmp
   tmp="$(mktemp "${STATE_FILE}.XXXXXX")"
-  jq "$1" "$STATE_FILE" > "$tmp"
+  jq "$@" "$STATE_FILE" > "$tmp"
   mv -f "$tmp" "$STATE_FILE"
 }
 
@@ -367,8 +367,8 @@ init_state
 
 # Resolve Jira project (required on first run, loaded from state on resume)
 if [[ -n "$JIRA_PROJECT" ]]; then
-  update_state --arg jp "$JIRA_PROJECT" '.jira_project = $jp'
-  update_state --arg lt "$LINEAR_TEAM" '.linear_team = $lt'
+  update_state ".jira_project = \"$JIRA_PROJECT\""
+  update_state ".linear_team = \"$LINEAR_TEAM\""
 else
   JIRA_PROJECT="$(read_state '.jira_project')"
   if [[ "$JIRA_PROJECT" == "null" || -z "$JIRA_PROJECT" ]]; then

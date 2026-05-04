@@ -80,7 +80,25 @@ the pull path.
 
 ---
 
-## Step 4: Install the pull cron
+## Step 4: Configure priority mapping
+
+For priorities to sync correctly between beads (P1–P4) and Linear (1–4),
+set the mapping:
+
+```bash
+bd config set linear.priority_map.1 1
+bd config set linear.priority_map.2 2
+bd config set linear.priority_map.3 3
+bd config set linear.priority_map.4 4
+```
+
+> **Why:** Without this, all issues push to Linear with priority 0
+> ("No priority") regardless of what you set in beads. This config is
+> stored in the local database, not in config.yaml.
+
+---
+
+## Step 5: Install the pull cron
 
 This sets up a background job that pulls Linear updates to your laptop every
 15 minutes (with jitter so the whole team doesn't hit Linear at once).
@@ -104,7 +122,7 @@ Expected output:
 
 ---
 
-## Step 5: Verify it works
+## Step 6: Verify it works
 
 Do a dry-run pull to confirm your credentials and config are correct:
 
