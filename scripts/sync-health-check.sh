@@ -181,8 +181,14 @@ check_ci_sync() {
   # Age of last successful sync
   local now_epoch success_epoch age_minutes
   now_epoch="$(date +%s)"
-  success_epoch="$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$last_success_time" +%s 2>/dev/null \
-    || date -d "$last_success_time" +%s 2>/dev/null \
+  # GitHub ISO8601 is UTC; strip optional fractional seconds before parsing.
+  local ts_trim="$last_success_time"
+  if [[ "$ts_trim" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})\.[0-9]+Z$ ]]; then
+    ts_trim="${BASH_REMATCH[1]}Z"
+  fi
+
+  success_epoch="$(date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$ts_trim" +%s 2>/dev/null \
+    || date -u -d "$last_success_time" +%s 2>/dev/null \
     || echo "0")"
 
   if [[ "$success_epoch" -gt 0 ]]; then
@@ -197,11 +203,17 @@ check_ci_sync() {
     fi
   fi
 
-  # Consecutive failure count
+  # Consecutive failure count (runs_json is newest-first)
   local consecutive_failures
-  consecutive_failures="$(echo "$runs_json" | jq '[.[] | select(.conclusion != null)] | [foreach .[] as $r (0; if $r.conclusion != "success" then . + 1 else -1; break end)] | max // 0')"
-  # Simpler: count from head until first success
-  consecutive_failures="$(echo "$runs_json" | jq '[.[] | .conclusion] | [limit(length; range(length)) as $i | if .[$i] == "success" then $i else empty end] | .[0] // length')"
+  consecutive_failures="$(echo "$runs_json" | jq '
+    [.[] | select(.conclusion != null) | .conclusion]
+    | def leading_failures:
+        if length == 0 then 0
+        elif .[0] == "success" then 0
+        else 1 + (.[1:] | leading_failures)
+        end;
+      leading_failures
+  ')"
 
   if [[ "$consecutive_failures" -ge 3 ]]; then
     record "critical" "ci_consecutive_failures" "${consecutive_failures} consecutive failures — escalating"
@@ -235,9 +247,9 @@ check_coverage() {
     return
   fi
 
-  # Count beads that have external refs
+  # Count beads that have external refs (wrapped {version,refs} or legacy flat map)
   if [[ -f "$EXTERNAL_REFS_FILE" ]]; then
-    covered="$(jq 'length' "$EXTERNAL_REFS_FILE" 2>/dev/null || echo 0)"
+    covered="$(jq 'if (.refs | type) == "object" then (.refs | length) else length end' "$EXTERNAL_REFS_FILE" 2>/dev/null || echo 0)"
   fi
 
   local coverage_pct
