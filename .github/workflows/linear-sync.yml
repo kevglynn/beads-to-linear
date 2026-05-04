@@ -117,9 +117,13 @@ jobs:
             $BD_CFG linear.team_ids "$LINEAR_TEAM_ID"
           fi
           if [[ -n "$BD_LINEAR_STATE_OPEN" ]]; then
+            # Pull direction: beads status → Linear state UUID
             $BD_CFG linear.state_map.open "$BD_LINEAR_STATE_OPEN"
             $BD_CFG linear.state_map.in_progress "$BD_LINEAR_STATE_IN_PROGRESS"
             $BD_CFG linear.state_map.closed "$BD_LINEAR_STATE_CLOSED"
+            # Push direction: Linear state name → beads status
+            $BD_CFG linear.state_map.todo "open"
+            $BD_CFG "linear.state_map.in progress" "in_progress"
             $BD_CFG linear.state_map.done "closed"
           fi
           # Priority map is 1:1 (beads P1 → Linear P1, etc.)
