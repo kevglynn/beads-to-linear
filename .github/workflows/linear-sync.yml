@@ -101,6 +101,31 @@ jobs:
             bd init --force 2>/dev/null || true
           fi
 
+      - name: Configure Linear integration
+        env:
+          LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
+          BD_LINEAR_STATE_OPEN: ${{ vars.BD_LINEAR_STATE_OPEN }}
+          BD_LINEAR_STATE_IN_PROGRESS: ${{ vars.BD_LINEAR_STATE_IN_PROGRESS }}
+          BD_LINEAR_STATE_CLOSED: ${{ vars.BD_LINEAR_STATE_CLOSED }}
+        run: |
+          # Wire non-secret Linear config into the fresh CI database.
+          # Team ID comes from secrets; state UUIDs from repo variables.
+          if [[ -n "$LINEAR_TEAM_ID" ]]; then
+            bd config set linear.team_ids "$LINEAR_TEAM_ID"
+          fi
+          if [[ -n "$BD_LINEAR_STATE_OPEN" ]]; then
+            bd config set linear.state_map.open "$BD_LINEAR_STATE_OPEN"
+            bd config set linear.state_map.in_progress "$BD_LINEAR_STATE_IN_PROGRESS"
+            bd config set linear.state_map.closed "$BD_LINEAR_STATE_CLOSED"
+            bd config set linear.state_map.done "closed"
+          fi
+          # Priority map is 1:1 (beads P1 → Linear P1, etc.)
+          for p in 1 2 3 4; do
+            bd config set linear.priority_map.$p $p
+          done
+          bd config set linear.id_mode hash
+          bd config set linear.hash_length 6
+
       - name: Detect delta and run sync
         id: sync
         env:
