@@ -1,167 +1,237 @@
 {
+  "btl-5ok": {
+    "linear_id": "KEV-53",
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-53/upstream-pr-fix-issuebatchcreate-variable-type-in-clientgo",
+    "synced_at": "2026-05-04T13:56:34Z"
+  },
+  "btl-znv": {
+    "linear_id": "KEV-43",
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-43/batch-create-silently-drops-new-issues-not-returned-in-response",
+    "synced_at": "2026-05-04T05:20:45Z"
+  },
   "btl-16t": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-7/upstream-bug-bd-export-includes-wisps-in-jsonl-by-default",
     "linear_id": "KEV-7",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-7/upstream-bug-bd-export-includes-wisps-in-jsonl-by-default",
+    "synced_at": "2026-05-04T05:25:55Z"
   },
   "btl-4yx": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-8/implement-external-ref-storage-separation-beadsexternal-refsjson",
     "linear_id": "KEV-8",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-8/implement-external-ref-storage-separation-beadsexternal-refsjson",
+    "synced_at": "2026-05-04T05:25:55Z"
   },
   "btl-wqv": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-9",
     "linear_id": "KEV-9",
-    "synced_at": "2026-05-02T06:28:28Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-9/upstream-bug-bd-export-includes-memories-in-jsonl",
+    "synced_at": "2026-05-04T05:06:07Z"
   },
   "btl-09x": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-10/open-pr-4-issuebatchcreate-and-issuebatchupdate-adoption",
     "linear_id": "KEV-10",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-10/open-pr-4-issuebatchcreate-and-issuebatchupdate-adoption",
+    "synced_at": "2026-05-04T05:25:55Z"
   },
   "btl-0bk": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-11/adopt-centralized-linear-sync-architecture-option-7",
     "linear_id": "KEV-11",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-11/adopt-centralized-linear-sync-architecture-option-7",
+    "synced_at": "2026-05-04T05:25:55Z"
   },
   "btl-11r": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-12/open-pr-3-oauth-client-credentials-support-for-linearclient",
     "linear_id": "KEV-12",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-12/open-pr-3-oauth-client-credentials-support-for-linearclient",
+    "synced_at": "2026-05-04T05:25:55Z"
   },
   "btl-9pf": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-13/upstream-prs-to-gastownhallbeads-to-unblock-org-architecture",
     "linear_id": "KEV-13",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-13/upstream-prs-to-gastownhallbeads-to-unblock-org-architecture",
+    "synced_at": "2026-05-04T05:25:55Z"
   },
   "btl-bw2": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-14/open-pr-5-idempotency-markers-on-linear-issue-creation",
     "linear_id": "KEV-14",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-14/open-pr-5-idempotency-markers-on-linear-issue-creation",
+    "synced_at": "2026-05-04T05:25:55Z"
   },
   "btl-lp5": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-15/open-pr-1-refuse-to-write-linearapi-key-to-git-tracked-configyaml",
     "linear_id": "KEV-15",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-15/open-pr-1-refuse-to-write-linearapi-key-to-git-tracked-configyaml",
+    "synced_at": "2026-05-04T05:25:55Z"
+  },
+  "btl-4p8": {
+    "linear_id": "KEV-56",
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-56/pull-does-not-apply-in-progress-status-from-linear-l2-scenario-fail",
+    "synced_at": "2026-05-04T05:25:55Z"
+  },
+  "btl-yky": {
+    "linear_id": "KEV-44",
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-44/run-pilot-test-scenarios-p1-p3-and-l1-l3-as-dogfood-validation",
+    "synced_at": "2026-05-04T05:25:56Z"
+  },
+  "btl-gs1": {
+    "linear_id": "KEV-45",
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-45/add-priority-map-to-config-validator-required-keys",
+    "synced_at": "2026-05-04T05:20:45Z"
+  },
+  "btl-x29": {
+    "linear_id": "KEV-46",
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-46/fix-ci-push-script-linear-id-extraction-and-jsonl-seeding",
+    "synced_at": "2026-05-04T05:25:56Z"
+  },
+  "btl-pud": {
+    "linear_id": "KEV-47",
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-47/fix-config-validator-to-check-database-stored-keys-via-bd-config-get",
+    "synced_at": "2026-05-04T05:25:56Z"
+  },
+  "btl-9rw": {
+    "linear_id": "KEV-48",
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-48/build-sync-fidelity-check-script-dogfooding-measurement-tool",
+    "synced_at": "2026-05-04T05:25:56Z"
+  },
+  "btl-pcy": {
+    "linear_id": "KEV-49",
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-49/priority-mapping-not-configured-0percent-priority-fidelity-until",
+    "synced_at": "2026-05-04T05:20:46Z"
   },
   "btl-seo": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-39/upstream-ambient-staleness-signal-bd-prime-auto-pull-pull-if-stale",
     "linear_id": "KEV-39",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-39/upstream-ambient-staleness-signal-bd-prime-auto-pull-pull-if-stale",
+    "synced_at": "2026-05-04T05:25:56Z"
   },
   "btl-6mr": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-16",
     "linear_id": "KEV-16",
-    "synced_at": "2026-05-03T00:10:31Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-16/ci-monitoringalerting-dashboard-for-sync-worker",
+    "synced_at": "2026-05-04T05:06:07Z"
   },
   "btl-96d": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-17",
     "linear_id": "KEV-17",
-    "synced_at": "2026-05-02T06:28:33Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-17/jsonl-merge-strategy-and-gitattributes-config",
+    "synced_at": "2026-05-04T05:06:07Z"
   },
   "btl-9fz": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-18",
     "linear_id": "KEV-18",
-    "synced_at": "2026-05-03T00:10:31Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-18/spike-verify-oauth-token-acquisition-race-under-concurrent-ci",
+    "synced_at": "2026-05-04T05:06:07Z"
   },
   "btl-apg": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-19/phase-1-pilot-validation-plan-50-bead-burn-in-exit-criteria-tracking",
     "linear_id": "KEV-19",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-19/phase-1-pilot-validation-plan-50-bead-burn-in-exit-criteria-tracking",
+    "synced_at": "2026-05-04T05:25:56Z"
   },
   "btl-0nz": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-20/decide-per-laptop-pull-credential-strategy",
     "linear_id": "KEV-20",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-20/decide-per-laptop-pull-credential-strategy",
+    "synced_at": "2026-05-04T05:25:56Z"
   },
   "btl-3hg": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-21/open-pr-2-federation-respects-ephemeral-wisp-filters",
     "linear_id": "KEV-21",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-21",
+    "synced_at": "2026-05-04T05:22:36Z"
   },
   "btl-4k5": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-22/open-pr-6-retry-after-header-parsing-and-adaptive-backoff",
     "linear_id": "KEV-22",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-22",
+    "synced_at": "2026-05-04T05:22:36Z"
   },
   "btl-65f": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-23/decide-per-laptop-pull-conflict-resolution-policy",
     "linear_id": "KEV-23",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-23",
+    "synced_at": "2026-05-04T05:19:42Z"
   },
   "btl-6tt": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-24/spike-provision-linear-oauth-app-and-validate-actorapp-behavior",
     "linear_id": "KEV-24",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-24",
+    "synced_at": "2026-05-04T05:19:42Z"
   },
   "btl-hgv": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-25",
     "linear_id": "KEV-25",
-    "synced_at": "2026-05-03T05:17:58Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-25/open-pr-0-to-gastownhallbeads-type-mapping-completion-canary",
+    "synced_at": "2026-05-04T05:06:08Z"
   },
   "btl-wxa": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-26/build-ci-worker-for-centralized-linear-push-org-internal",
     "linear_id": "KEV-26",
-    "synced_at": "2026-05-04T04:51:32Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-26",
+    "synced_at": "2026-05-04T05:19:43Z"
+  },
+  "btl-utv": {
+    "linear_id": "KEV-55",
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-55/pilot-test-p3-verify-priority-update-roundtrip",
+    "synced_at": "2026-05-04T05:25:56Z"
+  },
+  "btl-1r6": {
+    "linear_id": "KEV-54",
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-54/pilot-test-p2-verify-close-and-push-status-roundtrip",
+    "synced_at": "2026-05-04T05:21:14Z"
+  },
+  "btl-ora": {
+    "linear_id": "KEV-50",
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-50/pilot-test-p1-verify-create-and-push-roundtrip",
+    "synced_at": "2026-05-04T05:20:46Z"
+  },
+  "btl-djt": {
+    "linear_id": "KEV-51",
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-51/add-gitignore-entries-for-sync-history-and-last-pull",
+    "synced_at": "2026-05-04T05:20:46Z"
+  },
+  "btl-d99": {
+    "linear_id": "KEV-52",
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-52/stale-push-edge-case-priority-not-updated-for-pre-mapping-beads",
+    "synced_at": "2026-05-04T05:20:46Z"
   },
   "btl-a2v": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-27",
     "linear_id": "KEV-27",
-    "synced_at": "2026-05-02T06:28:38Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-27/handle-linear-issue-hard-deletion-404-on-update-in-sync",
+    "synced_at": "2026-05-04T05:06:08Z"
   },
   "btl-cts": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-28",
     "linear_id": "KEV-28",
-    "synced_at": "2026-05-02T06:28:38Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-28/branch-protection-rules-for-repos-using-beads-to-linear-sync",
+    "synced_at": "2026-05-04T05:06:08Z"
   },
   "btl-l2h": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-29",
     "linear_id": "KEV-29",
-    "synced_at": "2026-05-02T06:28:39Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-29/offboarding-procedures-for-departed-devs",
+    "synced_at": "2026-05-04T05:06:08Z"
   },
   "btl-tsr": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-30",
     "linear_id": "KEV-30",
-    "synced_at": "2026-05-02T06:28:39Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-30/decide-multi-repo-ci-worker-topology",
+    "synced_at": "2026-05-04T05:06:08Z"
   },
   "btl-w8z": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-31",
     "linear_id": "KEV-31",
-    "synced_at": "2026-05-02T06:28:40Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-31/config-template-for-org-linear-sync-defaults",
+    "synced_at": "2026-05-04T05:06:08Z"
   },
   "btl-whe": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-32",
     "linear_id": "KEV-32",
-    "synced_at": "2026-05-02T06:28:40Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-32/dev-onboarding-guide-for-beads-to-linear-sync",
+    "synced_at": "2026-05-04T05:06:08Z"
   },
   "btl-2jg": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-33/open-pr-8-persistent-sync-audit-log",
     "linear_id": "KEV-33",
-    "synced_at": "2026-05-04T04:51:33Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-33",
+    "synced_at": "2026-05-04T05:19:43Z"
   },
   "btl-3zh": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-34/build-per-laptop-pull-cron-installer-org-internal",
     "linear_id": "KEV-34",
-    "synced_at": "2026-05-04T04:51:33Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-34",
+    "synced_at": "2026-05-04T05:19:43Z"
   },
   "btl-m2x": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-35/open-pr-7-per-workspace-concurrency-lock-on-bd-linear-sync",
     "linear_id": "KEV-35",
-    "synced_at": "2026-05-04T04:51:33Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-35",
+    "synced_at": "2026-05-04T05:07:04Z"
   },
   "btl-oyn": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-36/decide-per-laptop-pull-cadence",
     "linear_id": "KEV-36",
-    "synced_at": "2026-05-04T04:51:33Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-36",
+    "synced_at": "2026-05-04T05:07:04Z"
   },
   "btl-pjn": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-37",
     "linear_id": "KEV-37",
-    "synced_at": "2026-05-04T04:55:29Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-37",
+    "synced_at": "2026-05-04T05:07:04Z"
   },
   "btl-53l": {
-    "linear_url": "https://linear.app/kevglynn/issue/KEV-38",
     "linear_id": "KEV-38",
-    "synced_at": "2026-05-03T05:45:13Z"
+    "linear_url": "https://linear.app/kevglynn/issue/KEV-38/build-jira-linear-beads-backfill-script-org-internal",
+    "synced_at": "2026-05-04T05:21:51Z"
   }
 }
