@@ -125,6 +125,8 @@ jobs:
           done
           bd config set linear.id_mode hash
           bd config set linear.hash_length 6
+          # Commit config changes so subsequent bd commands see them via HEAD.
+          bd dolt commit -m "CI: configure Linear integration" 2>/dev/null || true
 
       - name: Detect delta and run sync
         id: sync
