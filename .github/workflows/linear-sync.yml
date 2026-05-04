@@ -110,23 +110,25 @@ jobs:
         run: |
           # Wire non-secret Linear config into the fresh CI database.
           # Team ID comes from secrets; state UUIDs from repo variables.
+          # --dolt-auto-commit on ensures each set is immediately committed to
+          # HEAD so subsequent bd invocations in later steps see the config.
+          BD_CFG="bd config set --dolt-auto-commit on"
           if [[ -n "$LINEAR_TEAM_ID" ]]; then
-            bd config set linear.team_ids "$LINEAR_TEAM_ID"
+            $BD_CFG linear.team_ids "$LINEAR_TEAM_ID"
           fi
           if [[ -n "$BD_LINEAR_STATE_OPEN" ]]; then
-            bd config set linear.state_map.open "$BD_LINEAR_STATE_OPEN"
-            bd config set linear.state_map.in_progress "$BD_LINEAR_STATE_IN_PROGRESS"
-            bd config set linear.state_map.closed "$BD_LINEAR_STATE_CLOSED"
-            bd config set linear.state_map.done "closed"
+            $BD_CFG linear.state_map.open "$BD_LINEAR_STATE_OPEN"
+            $BD_CFG linear.state_map.in_progress "$BD_LINEAR_STATE_IN_PROGRESS"
+            $BD_CFG linear.state_map.closed "$BD_LINEAR_STATE_CLOSED"
+            $BD_CFG linear.state_map.done "closed"
           fi
           # Priority map is 1:1 (beads P1 → Linear P1, etc.)
           for p in 1 2 3 4; do
-            bd config set linear.priority_map.$p $p
+            $BD_CFG linear.priority_map.$p $p
           done
-          bd config set linear.id_mode hash
-          bd config set linear.hash_length 6
-          # Commit config changes so subsequent bd commands see them via HEAD.
-          bd dolt commit -m "CI: configure Linear integration" 2>/dev/null || true
+          $BD_CFG linear.id_mode hash
+          $BD_CFG linear.hash_length 6
+          echo "✔ Linear integration configured"
 
       - name: Detect delta and run sync
         id: sync
