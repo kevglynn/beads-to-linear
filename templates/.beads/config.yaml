@@ -6,7 +6,10 @@
 # Linear integration
 linear:
   # Team IDs to sync with (comma-separated for multi-team)
-  team_ids: "KEV"
+  # Set to your team's UUID: bd config set linear.team_ids "<team-uuid>"
+  # Find it with: curl -s https://api.linear.app/graphql -H "Authorization: $LINEAR_API_KEY" \
+  #   -d '{"query":"{ teams { nodes { id name key } } }"}' | jq '.data.teams.nodes'
+  team_ids: ""
 
   # ID generation mode
   id_mode: "hash"

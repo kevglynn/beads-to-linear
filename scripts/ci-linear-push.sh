@@ -288,7 +288,7 @@ jq -r '
   def extract_ref:
     select(.id != null and .external_ref != null)
     | {(.id): {
-        linear_id: (.linear_id // (.external_ref | split("/") | last | split("-") | first)),
+        linear_id: (.linear_id // (.external_ref | capture("issue/(?<key>[A-Z]+-[0-9]+)") | .key) // "unknown"),
         linear_url: .external_ref,
         synced_at: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
       }};
@@ -304,7 +304,27 @@ if [[ "$new_ref_count" -gt 0 ]]; then
   merge_external_refs "$TEMP_REFS"
   ok "External refs updated (total: $(count_external_refs))"
 else
-  info "No new external refs to merge"
+  info "No new external refs from sync output"
+
+  # If external_refs.json is empty/missing but the JSONL has external_refs,
+  # seed from the JSONL itself (handles initial adoption and recovery).
+  if [[ "$(count_external_refs)" -eq 0 ]]; then
+    jsonl_refs="$(jq -r 'select(.external_ref != null and .external_ref != "") | .id' "$ISSUES_JSONL" | wc -l | tr -d ' ')"
+    if [[ "$jsonl_refs" -gt 0 ]]; then
+      info "Seeding external_refs.json from $jsonl_refs JSONL entries"
+      jq -s '
+        map(select(.external_ref != null and .external_ref != ""))
+        | map({(.id): {
+            linear_url: .external_ref,
+            linear_id: (.external_ref | capture("issue/(?<key>[A-Z]+-[0-9]+)") | .key),
+            synced_at: .updated_at
+          }})
+        | add // {}
+      ' "$ISSUES_JSONL" > "$TEMP_REFS"
+      merge_external_refs "$TEMP_REFS"
+      ok "Seeded external_refs.json with $jsonl_refs refs"
+    fi
+  fi
 fi
 
 # ── step 7: handle disappeared beads (decision d12 — archive) ────────────

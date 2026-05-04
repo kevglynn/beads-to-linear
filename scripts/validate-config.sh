@@ -147,9 +147,25 @@ check_drift() {
     tmpl_val="$(yaml_get "$TEMPLATE" "$key")"
     config_val="$(yaml_get "$CONFIG_PATH" "$key")"
 
+    # Linear integration keys live in the Dolt database, not the YAML file.
+    # Fall back to `bd config get` when the YAML lookup misses.
+    if [[ "$config_val" == "__MISSING__" ]] && command -v bd &>/dev/null; then
+      local db_key
+      db_key="$(echo "$key" | sed 's/^\.//')"
+      config_val="$(bd config get "$db_key" 2>/dev/null | sed 's/^[^=]*= *//' || echo "__MISSING__")"
+      [[ -z "$config_val" ]] && config_val="__MISSING__"
+    fi
+
+    # Normalize: strip leading/trailing whitespace and quotes for comparison
+    tmpl_val="$(echo "$tmpl_val" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/")"
+    config_val="$(echo "$config_val" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/")"
+
     if [[ "$config_val" == "__MISSING__" ]]; then
       echo -e "  ${YELLOW}WARN${RESET} Missing key: ${CYAN}${key}${RESET} (template: ${tmpl_val})"
       WARNINGS=$((WARNINGS + 1))
+    elif [[ -z "$tmpl_val" || "$tmpl_val" == "__MISSING__" ]]; then
+      # Template left blank (fill-in-your-own); just check it's set
+      echo -e "  ${GREEN}PASS${RESET} ${key} = ${config_val} (per-team value)"
     elif [[ "$tmpl_val" != "$config_val" ]]; then
       echo -e "  ${YELLOW}WARN${RESET} Drift on ${CYAN}${key}${RESET}: config=${config_val}, template=${tmpl_val}"
       WARNINGS=$((WARNINGS + 1))
@@ -164,32 +180,74 @@ check_drift() {
 check_maps() {
   echo -e "${BOLD}[3/3] Checking mapping sections...${RESET}"
 
-  if ! $USE_YQ; then
-    echo -e "  ${YELLOW}SKIP${RESET} Map comparison requires yq (mikefarah/yq). Install with:"
-    echo "         brew install yq   # macOS"
-    echo "         snap install yq   # Linux"
-    echo ""
-    return
-  fi
+  # Priority map: critical for fidelity — check via bd config get (works
+  # without yq since these are database-stored keys).
+  if command -v bd &>/dev/null; then
+    local pri_missing=0
+    for pri in 1 2 3 4; do
+      local val
+      val="$(bd config get "linear.priority_map.${pri}" 2>/dev/null | sed 's/^[^=]*= *//' || echo "")"
+      if [[ -z "$val" || "$val" == "(not set)" ]]; then
+        pri_missing=$((pri_missing + 1))
+      fi
+    done
 
-  local maps=(".linear.priority_map" ".linear.state_map" ".linear.label_type_map")
-  for map_key in "${maps[@]}"; do
-    local tmpl_map config_map
-    tmpl_map="$(yq eval "${map_key}" "$TEMPLATE" 2>/dev/null)"
-    config_map="$(yq eval "${map_key}" "$CONFIG_PATH" 2>/dev/null)"
-
-    if [[ "$config_map" == "null" ]]; then
-      echo -e "  ${YELLOW}WARN${RESET} Missing section: ${CYAN}${map_key}${RESET}"
-      WARNINGS=$((WARNINGS + 1))
-    elif [[ "$tmpl_map" != "$config_map" ]]; then
-      echo -e "  ${YELLOW}WARN${RESET} Drift in ${CYAN}${map_key}${RESET}:"
-      # Show a compact diff
-      diff --color=auto <(echo "$tmpl_map") <(echo "$config_map") | sed 's/^/         /' || true
+    if [[ "$pri_missing" -eq 0 ]]; then
+      echo -e "  ${GREEN}PASS${RESET} linear.priority_map (all 4 priorities configured)"
+    elif [[ "$pri_missing" -eq 4 ]]; then
+      echo -e "  ${RED}FAIL${RESET} linear.priority_map NOT configured — priorities will not sync correctly"
+      echo -e "       Fix: bd config set linear.priority_map.1 1 && bd config set linear.priority_map.2 2 && bd config set linear.priority_map.3 3 && bd config set linear.priority_map.4 4"
       WARNINGS=$((WARNINGS + 1))
     else
-      echo -e "  ${GREEN}PASS${RESET} ${map_key} matches template"
+      echo -e "  ${YELLOW}WARN${RESET} linear.priority_map partially configured (${pri_missing}/4 missing)"
+      WARNINGS=$((WARNINGS + 1))
     fi
-  done
+  fi
+
+  # State map and label_type_map: check via yq if available, otherwise
+  # check a few critical entries via bd config get.
+  if $USE_YQ; then
+    local maps=(".linear.state_map" ".linear.label_type_map")
+    for map_key in "${maps[@]}"; do
+      local tmpl_map config_map
+      tmpl_map="$(yq eval "${map_key}" "$TEMPLATE" 2>/dev/null)"
+      config_map="$(yq eval "${map_key}" "$CONFIG_PATH" 2>/dev/null)"
+
+      if [[ "$config_map" == "null" ]]; then
+        echo -e "  ${YELLOW}WARN${RESET} Missing section: ${CYAN}${map_key}${RESET}"
+        WARNINGS=$((WARNINGS + 1))
+      elif [[ "$tmpl_map" != "$config_map" ]]; then
+        echo -e "  ${YELLOW}WARN${RESET} Drift in ${CYAN}${map_key}${RESET}:"
+        diff --color=auto <(echo "$tmpl_map") <(echo "$config_map") | sed 's/^/         /' || true
+        WARNINGS=$((WARNINGS + 1))
+      else
+        echo -e "  ${GREEN}PASS${RESET} ${map_key} matches template"
+      fi
+    done
+  elif command -v bd &>/dev/null; then
+    # Spot-check critical state_map entries via bd config get
+    local state_checks=0
+    for state_key in "todo" "done" "in progress"; do
+      local sv
+      sv="$(bd config get "linear.state_map.${state_key}" 2>/dev/null | sed 's/^[^=]*= *//' || echo "")"
+      if [[ -n "$sv" && "$sv" != *"not set"* ]]; then
+        state_checks=$((state_checks + 1))
+      fi
+    done
+    if [[ "$state_checks" -ge 3 ]]; then
+      echo -e "  ${GREEN}PASS${RESET} linear.state_map configured ($state_checks/3 core states)"
+    elif [[ "$state_checks" -gt 0 ]]; then
+      echo -e "  ${YELLOW}WARN${RESET} linear.state_map partially configured ($state_checks/3 core states)"
+      WARNINGS=$((WARNINGS + 1))
+    else
+      echo -e "  ${YELLOW}WARN${RESET} linear.state_map not configured"
+      WARNINGS=$((WARNINGS + 1))
+    fi
+  else
+    echo -e "  ${YELLOW}SKIP${RESET} Map comparison requires yq or bd. Install with:"
+    echo "         brew install yq   # macOS"
+    echo "         snap install yq   # Linux"
+  fi
   echo ""
 }
 
