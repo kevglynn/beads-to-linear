@@ -17,6 +17,67 @@
 
 ---
 
+## 1b. Current Status (as of 2026-05-04)
+
+### Upstream PRs to `gastownhall/beads`
+
+| PR | Title | Status | Notes |
+|----|-------|--------|-------|
+| #3651 | PR-0: type mappings (canary) | **MERGED** | decision, spike, story, milestone |
+| #3645 | docs: align interactions.jsonl policy | **OPEN** | Non-blocking docs fix |
+| #3659 | PR-2a: exclude wisps from export | **MERGED** | |
+| #3660 | PR-2b: exclude memories from export | **MERGED** | |
+| #3661 | PR-3: OAuth client-credentials | **MERGED** | Unblocks centralized CI writer |
+| #3654 | PR-4: batch mutations (50× efficiency) | **MERGED** | Architecture unblocked |
+| #3656 | PR-5: idempotency markers | **MERGED** | Dedup on interrupted sync |
+| #3655 | PR-6: Retry-After + circuit breaker | **MERGED** | Rate-limit safety |
+| #3657 | PR-7: per-workspace sync lock | **MERGED** | Prevents concurrent sync races |
+| #3658 | PR-8: persistent sync audit log | **OPEN** | CI green, awaiting `coffeegoddd` review (Dolt schema) |
+| #3703 | Fix: issueBatchCreate variable type | **OPEN** | Critical batch create fix found during dogfooding |
+
+### Upstream Issues Filed
+
+| Issue | Title | Status |
+|-------|-------|--------|
+| #3702 | Pull does not apply "In Progress" status | **OPEN** — upstream pull-path bug |
+| #3370 | Dolt auto-push hangs when remote unreachable | **OPEN** |
+| #3369 | Decompose bd doctor into sub-checkers | **OPEN** |
+
+### Org-Internal Tooling (this repo)
+
+| Component | File(s) | Status |
+|-----------|---------|--------|
+| CI push workflow | `.github/workflows/linear-sync.yml`, `scripts/ci-linear-push.sh` | **Ready** — tested, needs CI secrets |
+| Pull cron installer | `scripts/install-pull-cron.sh` | **Deployed** — running locally, 86 runs, 100% online success |
+| Config validator | `scripts/validate-config.sh` | **Ready** — validates YAML + Dolt DB config |
+| Sync fidelity checker | `scripts/sync-fidelity-check.sh`, `scripts/sync-fidelity-check.py` | **Ready** — current grade: A (100% fidelity) |
+| Config template | `templates/.beads/config.yaml` | **Ready** |
+| Operations runbook | `docs/runbooks/linear-sync.md` | **Ready** |
+| Dev onboarding guide | `docs/onboarding/dev-setup.md` | **Ready** |
+| Jira backfill script | `scripts/jira-to-linear-backfill.sh` | **Ready** — 5-step orchestration with dry-run |
+| Health monitor | `scripts/sync-health-check.sh`, `.github/workflows/sync-health-monitor.yml` | **Ready** |
+| Pilot validation plan | `docs/pilot-validation-plan.md` | **Ready** |
+| Merge strategy | `.gitattributes`, `docs/merge-strategy.md` | **Ready** — JSONL merge=union |
+
+### Dogfooding Status
+
+- **47 beads synced** to Linear workspace `kevglynn` (team KEV)
+- **100% fidelity**: title 100%, status 100%, priority 100%
+- **External refs**: 47/47 tracked
+- **Pull cron**: 86 runs, 82 successes, 4 DNS/offline failures (100% online success rate)
+- **Pilot scenarios passed**: P1 (create+push), P2 (close+push), P3 (priority update+push), L1 (priority pull)
+- **Known upstream bug**: L2 (status pull for "In Progress") fails — filed as #3702
+
+### What's Left
+
+1. **PR #3658** (audit log) — awaiting reviewer, not blocking anything
+2. **PR #3703** (batch fix) — awaiting reviewer, critical for batch creates
+3. **Issue #3702** (pull status bug) — awaiting upstream triage
+4. **CI workflow activation** — needs org repo with CI secrets configured
+5. **Team rollout** — ready to onboard first team once CI is live
+
+---
+
 ## 1a. What We're Building (by Persona)
 
 ### For developers (day-to-day)
