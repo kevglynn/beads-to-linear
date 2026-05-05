@@ -397,6 +397,45 @@ else
   ok "No changes to external_refs.json — nothing to commit"
 fi
 
+# ── step 9: apply repo label to pushed issues ────────────────────────────
+
+if [[ -n "${LINEAR_REPO_LABEL_ID:-}" ]]; then
+  step "Repo label"
+
+  unlabeled=$(curl -sf https://api.linear.app/graphql \
+    -H "Authorization: ${LINEAR_API_KEY}" \
+    -H "Content-Type: application/json" \
+    -d "{\"query\":\"{ team(id: \\\"${LINEAR_TEAM_ID}\\\") { issues(first: 250, filter: { labels: { every: { id: { neq: \\\"${LINEAR_REPO_LABEL_ID}\\\" } } } }) { nodes { id identifier labels { nodes { id } } } } } }\"}" \
+    | jq -r '.data.team.issues.nodes[] | select(.labels.nodes | map(.id) | index("'"${LINEAR_REPO_LABEL_ID}"'") | not) | .id' 2>/dev/null || true)
+
+  if [[ -n "$unlabeled" ]]; then
+    label_count=0
+    while IFS= read -r issue_id; do
+      if [[ "$DRY_RUN" == true ]]; then
+        warn "DRY RUN — would label $issue_id"
+      else
+        existing_labels=$(curl -sf https://api.linear.app/graphql \
+          -H "Authorization: ${LINEAR_API_KEY}" \
+          -H "Content-Type: application/json" \
+          -d "{\"query\":\"{ issue(id: \\\"${issue_id}\\\") { labels { nodes { id } } } }\"}" \
+          | jq -r '[.data.issue.labels.nodes[].id] + ["'"${LINEAR_REPO_LABEL_ID}"'"] | map("\"" + . + "\"") | join(",")' 2>/dev/null)
+
+        curl -sf https://api.linear.app/graphql \
+          -H "Authorization: ${LINEAR_API_KEY}" \
+          -H "Content-Type: application/json" \
+          -d "{\"query\":\"mutation { issueUpdate(id: \\\"${issue_id}\\\", input: { labelIds: [${existing_labels}] }) { success } }\"}" > /dev/null 2>&1
+
+        label_count=$((label_count + 1))
+      fi
+    done <<< "$unlabeled"
+    ok "Applied repo label to $label_count issues"
+  else
+    ok "All issues already have repo label"
+  fi
+else
+  info "No LINEAR_REPO_LABEL_ID set — skipping repo label step"
+fi
+
 # ── summary ──────────────────────────────────────────────────────────────
 
 step "Summary"

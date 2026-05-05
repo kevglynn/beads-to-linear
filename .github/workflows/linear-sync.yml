@@ -142,6 +142,7 @@ jobs:
           LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
           LINEAR_OAUTH_CLIENT_ID: ${{ secrets.LINEAR_OAUTH_CLIENT_ID }}
           LINEAR_OAUTH_CLIENT_SECRET: ${{ secrets.LINEAR_OAUTH_CLIENT_SECRET }}
+          LINEAR_REPO_LABEL_ID: ${{ vars.LINEAR_REPO_LABEL_ID }}
           BTL_MAX_PUSH_DELTA: ${{ inputs.max_delta || '100' }}
         run: |
           ARGS=""
