@@ -126,11 +126,17 @@ jobs:
             $BD_CFG "linear.state_map.in progress" "in_progress"
             $BD_CFG linear.state_map.done "closed"
           fi
-          # Priority map: 0 = No Priority, 1-4 are 1:1
-          $BD_CFG linear.priority_map.0 0
-          for p in 1 2 3 4; do
-            $BD_CFG linear.priority_map.$p $p
-          done
+          # Priority map: beads P0 is the HIGHEST urgency, but Linear uses
+          # 1=Urgent..4=Low and 0=No priority. A naive 1:1 map sent P0 beads to
+          # Linear "No priority" — burying the most critical work. Shift the band
+          # so P0→Urgent and only the lowest beads tier (P4) falls through to none.
+          #   bd P0 -> 1 (Urgent)   bd P1 -> 2 (High)   bd P2 -> 3 (Medium)
+          #   bd P3 -> 4 (Low)      bd P4 -> 0 (No priority)
+          $BD_CFG linear.priority_map.0 1
+          $BD_CFG linear.priority_map.1 2
+          $BD_CFG linear.priority_map.2 3
+          $BD_CFG linear.priority_map.3 4
+          $BD_CFG linear.priority_map.4 0
           $BD_CFG linear.id_mode hash
           $BD_CFG linear.hash_length 6
           echo "✔ Linear integration configured"
