@@ -4,7 +4,7 @@
 
 Owner: Kevin Glynn (top contributor to `gastownhall/beads` on GitHub).
 
-**What we're building:** A sync layer so devs keep using beads locally
+**What we built:** A sync layer so devs keep using beads locally
 while Linear automatically reflects their work for PMs and leadership.
 One CI worker is the sole Linear writer (pushes on every `git push`);
 per-laptop crons pull Linear updates back every 15 minutes. No dev
@@ -22,93 +22,59 @@ the post-AI-era issue tracking landscape.
 against the sandbox workspace (`linear.app/kevglynn`), then roll out
 org-wide. Teams that don't opt in are unaffected.
 
-## Key Challenges and Analysis
+## Project Status: Core Work Complete
 
-### Reframing (post local-context discovery)
+All 19 original beads are **closed**. The sync architecture, upstream PR
+train, CI worker, cron installer, runbook, backfill script, and pilot
+validation are done. Summary of what shipped:
 
-`bd` already ships a substantial Linear integration. Confirmed surface:
+### Upstream PRs to gastownhall/beads (9 PRs)
+- PR-0 `btl-hgv`: Type mapping completion (canary)
+- PR-1 `btl-lp5`: Refuse to write linear.api_key to git-tracked config
+- PR-2 `btl-3hg`: Federation respects ephemeral/wisp filters
+- PR-3 `btl-11r`: OAuth client-credentials support
+- PR-4 `btl-09x`: issueBatchCreate and issueBatchUpdate adoption
+- PR-5 `btl-bw2`: Idempotency markers on Linear issue creation
+- PR-6 `btl-4k5`: Retry-After header parsing and adaptive backoff
+- PR-7 `btl-m2x`: Per-workspace concurrency lock
+- PR-8 `btl-2jg`: Persistent sync audit log
 
-- `bd linear sync` (bidirectional, with `--pull / --push / --dry-run`)
-- `bd linear pull / push / status / teams`
-- Conflict policy: newer-timestamp wins by default; `--prefer-local` /
-  `--prefer-linear` overrides
-- Multi-team via `linear.team_ids`, single-team fallback `linear.team_id`
-- Type filters (`--type`, `--exclude-type`, `--include-ephemeral`),
-  subtree push (`--parent TICKET`), `--create-only`
-- Configurable mappings: `linear.priority_map.*`, `linear.state_map.*`,
-  `linear.label_type_map.*`, `linear.relation_map.*`, `linear.id_mode`
-- Backed by **Dolt** (versioned SQL) → first-class history, branch, merge,
-  diff via `bd vc`, `bd diff`, `bd history`, `bd branch`
-- Federation: `bd federation sync` (peer-to-peer between workspaces)
-- JSONL is the cross-tool interchange (`bd export` → `.beads/issues.jsonl`)
-- Git hooks installed for export-on-commit, sync on pull/push
+### Org-internal tooling (this repo)
+- CI worker for centralized Linear push (`btl-wxa`)
+- Per-laptop pull cron installer (`btl-3zh`)
+- Operations runbook (`btl-pjn`)
+- Jira → Linear backfill script (`btl-53l`)
+- Config template, onboarding guide, branch protection rules
+- Monitoring/alerting dashboard, JSONL merge strategy
+- Pilot validation (50-bead burn-in with exit criteria)
 
-So this project is **NOT** a from-scratch sync tool. The right framing is:
+### Architecture decisions (all closed → option a)
+- Credential strategy (`btl-0nz`)
+- Pull cadence (`btl-oyn`)
+- Conflict resolution policy (`btl-65f`)
 
-1. Audit the existing `bd linear` for gaps that block multi-developer,
-   org-wide rollout (rate limits, conflict storms, ID collision, webhook
-   absence, observability, RBAC, partial-trust scopes).
-2. Decide the deployment architecture: per-laptop sync, centralized
-   reconciler, or hybrid (git-mediated queue + central worker).
-3. Decide what to upstream to `gastownhall/beads` vs what stays as our
-   org-internal orchestration tooling in this repo.
-4. Plan a phased rollout that survives N concurrent writers.
+### Bugs found and fixed along the way
+- Batch create silently drops new issues (`btl-znv`)
+- `bd export` includes wisps/memories in JSONL (`btl-16t`, `btl-wqv`)
+- Priority mapping not configured (`btl-pcy`)
+- Stale-push edge case for pre-mapping beads (`btl-d99`)
+- CI push script fixes (`btl-x29`), health check bugs (`btl-7ay`)
+- External_ref storage separation (`btl-4yx`)
 
-### Open questions to resolve via deep dive
+## What's Left
 
-See orchestrator prompt for the full clustered question set (state of the
-art, multi-dev gotchas, architecture options, beads contribution model,
-Linear API specifics, failure modes, rollout).
+**No open beads.** The ready queue is empty.
 
-## High-level Task Breakdown
+5 ingestion/munchbot beads were closed and removed from this project on
+2026-05-08 — they belong in the munchbot repo, not here.
 
-Seeded from `PLAN.md` §10 via `bd create --graph docs/initial-bead-plan.json`.
-Result: 19 beads, 13 dep edges, 2 parent-child epic groupings, prefix `btl-`.
+### Potential next steps (not yet planned)
+- Phase 2 rollout to org Linear workspace (blocked on org workspace provisioning)
+- Upstream PR follow-up: check merge status, address reviewer feedback
+- Dogfooding: continued use of the sync pipeline on this repo itself
+- Contributing the integration back upstream per the strategic angle
 
-| Symbolic key                    | bd ID    | Type     | Pri | Notes                          |
-| ------------------------------- | -------- | -------- | --- | ------------------------------ |
-| epic-arch                       | btl-0bk  | epic     | P1  | Centralized sync architecture  |
-| epic-upstream                   | btl-9pf  | epic     | P1  | 9-PR train to gastownhall/beads |
-| task-pr0                        | btl-hgv  | task     | P2  | Canary: type mapping           |
-| task-pr1                        | btl-lp5  | task     | P1  | P0 SECURITY: refuse git keys   |
-| task-pr2                        | btl-3hg  | task     | P2  | P1 PRIVACY: federation wisp    |
-| task-pr3                        | btl-11r  | task     | P1  | OAuth client-credentials       |
-| task-pr4                        | btl-09x  | task     | P1  | Batch mutations                |
-| task-pr5                        | btl-bw2  | task     | P1  | Idempotency markers            |
-| task-pr6                        | btl-4k5  | task     | P2  | Retry-After / circuit breaker  |
-| task-pr7                        | btl-m2x  | task     | P3  | Concurrency lock               |
-| task-pr8                        | btl-2jg  | task     | P3  | Persistent audit log           |
-| task-ci-worker                  | btl-wxa  | task     | P2  | Org CI worker                  |
-| task-pull-cron                  | btl-3zh  | task     | P3  | Per-laptop pull cron installer |
-| task-runbook                    | btl-pjn  | task     | P3  | Operations runbook             |
-| task-backfill                   | btl-53l  | task     | P4  | Jira → Linear backfill         |
-| spike-oauth-app                 | btl-6tt  | spike    | P2  | Validate OAuth in sandbox      |
-| decision-credential-strategy    | btl-0nz  | decision | P2  | CLOSED: option (a)             |
-| decision-pull-cadence           | btl-oyn  | decision | P3  | CLOSED: option (a)             |
-| decision-conflict-policy        | btl-65f  | decision | P2  | CLOSED: option (a)             |
-
-Ready queue right now (after closing 3 decisions):
-1. **btl-hgv** task-pr0 — canary upstream PR (start here)
-2. **btl-6tt** spike-oauth-app — validate OAuth in sandbox
-3. **btl-pjn** task-runbook — can run in parallel
-4. (epics btl-0bk, btl-9pf show as ready but are containers, not actionable)
-
-## Current Status / Progress Tracking
-
-- [x] Project scaffolded with ai-dev-playbook
-- [x] Local context audit: confirmed `bd linear` already exists
-- [x] Deep-dive orchestrator pass 1 (6 parallel specialists)
-- [x] Deep-dive orchestrator pass 2 (3 cross-pollination agents)
-- [x] PLAN.md written (990 lines, all 11 sections)
-- [x] §9 open decisions resolved by human (all 10 → option a)
-- [x] §10 translated into 19 beads with deps + parent-child wiring
-- [x] 3 ADR-style decision beads closed with resolution notes
-- [ ] First commit of seed plan + bead state
-- [ ] Begin work on ready queue (btl-hgv canary PR or btl-6tt OAuth spike)
-
-## Executor's Feedback or Assistance Requests
-
-### Confirmed environment (2026-05-01)
+## Confirmed Environment
 
 - **Upstream beads repo**: `gastownhall/beads`
   (https://github.com/gastownhall/beads), local clone `~/beads`
@@ -121,12 +87,19 @@ Ready queue right now (after closing 3 decisions):
   of any rollout plan must NOT assume it exists; design Phase 1 to be
   fully validated without it.
 - **Sandbox Linear workspace**: https://linear.app/kevglynn — owner has
-  admin. ALL Phase 0/Phase 1 sync experiments target this. Architecture
-  decisions about rate limits, webhooks, conflict policy will be
-  validated end-to-end here before any org-Linear involvement.
+  admin. ALL Phase 0/Phase 1 sync experiments target this.
 - **gh active account note**: scripts running as `kev-pryon` (work)
-  cannot operate on `kevglynn/*` repos. Document in Section 7 of PLAN
-  (org-internal tooling) so any future automation gets the auth right.
+  cannot operate on `kevglynn/*` repos.
+
+## Dirty Working Tree
+
+10 uncommitted changes as of 2026-05-08:
+- Modified: `.beads/issues.jsonl`, `.claude/rules/operating-model.md`,
+  `.cursor/rules/operating-model.mdc`, `CLAUDE.md`, `PLAN.md`
+- Untracked: `.claude/rules/parallel-subagent-safety.md`,
+  `.claude/rules/session-lifecycle.md`,
+  `.cursor/rules/session-lifecycle.mdc`,
+  two `.bak` files (safe to delete)
 
 ## Lessons
 
@@ -149,3 +122,5 @@ Ready queue right now (after closing 3 decisions):
   target org/user, switch with `gh auth switch --user <other>` rather
   than re-authenticating. We have three accounts wired up: `kev-pryon`
   (work), `kevglynn` (personal), `Medhaug`.
+- Keep project beads scoped to the repo's purpose. Ingestion/munchbot
+  beads were misplaced here and had to be cleaned out.

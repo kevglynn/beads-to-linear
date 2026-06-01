@@ -45,7 +45,7 @@ Every close reason must include evidence mapped to acceptance criteria:
 | Docs | "N/A — documentation update, no verification needed" |
 | Decision | "N/A — decision record, no verification needed" |
 | Milestone | "N/A — milestone marker, verify children are closed" |
-| Epic | "N/A — container, verify all children closed via `bd epic close-eligible`" |
+| Epic | Verify all children closed (`bd epic close-eligible`), then confirm each success criterion is met by the closed children's outcomes. If a criterion is unmet, create a follow-up bead before closing. |
 
 ### Do not defer AC verification
 

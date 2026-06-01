@@ -17,14 +17,14 @@
 
 ---
 
-## 1b. Current Status (as of 2026-05-04)
+## 1b. Current Status (as of 2026-05-06)
 
 ### Upstream PRs to `gastownhall/beads`
 
 | PR | Title | Status | Notes |
 |----|-------|--------|-------|
 | #3651 | PR-0: type mappings (canary) | **MERGED** | decision, spike, story, milestone |
-| #3645 | docs: align interactions.jsonl policy | **OPEN** | Non-blocking docs fix |
+| #3645 | docs: align interactions.jsonl policy | **MERGED** | |
 | #3659 | PR-2a: exclude wisps from export | **MERGED** | |
 | #3660 | PR-2b: exclude memories from export | **MERGED** | |
 | #3661 | PR-3: OAuth client-credentials | **MERGED** | Unblocks centralized CI writer |
@@ -32,8 +32,11 @@
 | #3656 | PR-5: idempotency markers | **MERGED** | Dedup on interrupted sync |
 | #3655 | PR-6: Retry-After + circuit breaker | **MERGED** | Rate-limit safety |
 | #3657 | PR-7: per-workspace sync lock | **MERGED** | Prevents concurrent sync races |
-| #3658 | PR-8: persistent sync audit log | **OPEN** | CI green, awaiting `coffeegoddd` review (Dolt schema) |
+| #3717 | PR-8: persistent sync audit log (v2) | **OPEN** | CI green, awaiting review |
 | #3703 | Fix: issueBatchCreate variable type | **OPEN** | Critical batch create fix found during dogfooding |
+| #3675 | fix(dep): distinguish blocks vs parent-child | **MERGED** | |
+| #3718 | fix(linear): done/deferred/pinned/hooked status aliases | **MERGED** | Fixes status sync for pilot |
+| #3739 | fix(list): emphasize truncation warning with WarnStyle | **OPEN** | Replaces #3644 (bad rebase) |
 
 ### Upstream Issues Filed
 

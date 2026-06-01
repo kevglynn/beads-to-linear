@@ -2,7 +2,7 @@
 
 ## Rule Hierarchy
 
-Specialized rules (pragmatic-tdd, beads-quality, bead-completion, design-docs, worktree-awareness, multi-agent-review, agent-identity) are the source of truth for their domain. This rule defines the operating model (roles, workflow, conventions). If a conflict arises: project agent rules > specialized rules > this rule > repo docs (AGENTS.md, CLAUDE.md).
+Specialized rules (session-lifecycle, pragmatic-tdd, beads-quality, bead-completion, design-docs, worktree-awareness, multi-agent-review, agent-identity, parallel-subagent-safety) are the source of truth for their domain. This rule defines the operating model (roles, workflow, conventions). If a conflict arises: project agent rules > specialized rules > this rule > repo docs (AGENTS.md, CLAUDE.md).
 
 ## Roles
 
@@ -104,7 +104,7 @@ When the Executor encounters an unexpected failure:
 
 ## Task Tracking with Beads
 
-- **Beads (`bd`) is the single source of truth for task state.** Do not track tasks with markdown checkboxes.
+- **Beads (`bd`) is the single source of truth for task state.** Do NOT use TodoWrite, CreatePlan, TaskCreate, markdown checklists, or any other IDE-native task tool as a substitute. These do not persist across sessions and are invisible to other agents and worktrees.
 - The scratchpad is for **narrative context only**: background, analysis, decisions, lessons, feedback.
 - On new projects, check for `.beads/`. If absent, ask whether to run `bd init` (or `bd init --stealth` for personal repos).
 - **Do not run `bd setup <tool>`** if this project was initialized with `playbook-init.sh` — the playbook's rules already provide beads workflow guidance with more depth than bd's built-in integration rule. Running `bd setup` would add a redundant `beads.md`. Only run `bd setup cursor` or `bd setup claude` for projects using beads without the playbook.
@@ -128,25 +128,19 @@ When the Executor encounters an unexpected failure:
 
 ## Session Lifecycle
 
-### Session start
+**See `session-lifecycle.md` for the mandatory session start/close protocol.** That rule contains the core checklist every agent must follow. The extended reference below covers additional hygiene steps.
 
-1. `bd prime` — reload workflow context (memories, project state)
-2. Review injected memories — if any contradict what you see in code, update with `bd remember --key <key> "corrected"` or `bd forget <key>`
-3. `bd human list` — check for pending decisions that need user input before work can proceed
-4. `bd show --current` — check if you have in-progress work from a prior session to resume
-5. `bd ready` — find the next unblocked task
-6. If starting from a fresh clone: `bd bootstrap` to ensure DB is healthy
-7. If `bd ready` returns nothing: `bd blocked` to understand what's stuck, then report to the user
+### Extended session start (after the mandatory checklist)
 
-### Session close
+- Review injected memories — if any contradict what you see in code, update with `bd remember --key <key> "corrected"` or `bd forget <key>`
+- `bd human list` — check for pending decisions that need user input before work can proceed
+- If starting from a fresh clone: `bd bootstrap` to ensure DB is healthy
+- If `bd ready` returns nothing: `bd blocked` to understand what's stuck, then report to the user
 
-Before ending work:
-1. If a bead is in-progress but not done: `bd note <id> "Progress: <what's done, what remains, key decisions made>"` — this survives context loss
-2. `git status` — check for uncommitted changes
-3. `git add <files> && git commit` — commit code changes
-4. Pause: did this session surface something a future agent would rediscover? If yes, `bd remember --key <area>-<topic> "<insight>"`
-5. `bd doctor --agent` — quick health check (catches orphaned in-progress beads, broken deps)
-6. `bd dolt pull && bd dolt push` — sync beads state with remote (if remote configured)
+### Extended session close (after the mandatory checklist)
+
+- `bd doctor --agent` — quick health check (catches orphaned in-progress beads, broken deps)
+- `bd dolt pull && bd dolt push` — sync beads state with remote (if remote configured)
 
 ## Finding and Filtering Beads
 

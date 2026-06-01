@@ -1,0 +1,28 @@
+---
+description: Session start/close protocol — the first and last things an agent does in every session. Mandatory.
+alwaysApply: true
+---
+
+# Session Lifecycle — MANDATORY
+
+This protocol is non-negotiable. Every session. No exceptions.
+
+## Session start — do this BEFORE any other work
+
+1. `bd prime` — reload workflow context and memories
+2. `bd show --current` — check for in-progress work from a prior session
+3. `bd ready` — find the next unblocked task
+
+If `bd` is not installed or `.beads/` is missing, ask the user before proceeding.
+
+## Session close — do this BEFORE ending
+
+1. If a bead is in-progress but not done: `bd note <id> "Progress: <what's done, what remains>"`
+2. `git status` — check for uncommitted changes; commit if needed
+3. **Knowledge capture check**: Answer this question honestly — did this session surface something a future agent would waste time rediscovering? If yes: `bd remember --key <area>-<topic> "<insight>"`. If no, skip.
+
+## Prohibited task tracking tools
+
+**Do NOT use TodoWrite, CreatePlan, TaskCreate, markdown checklists, or any IDE-native task tool for tracking work.** These tools do not persist across sessions and are invisible to other agents. There are no exceptions — if work is worth tracking, it belongs in a bead.
+
+Use `bd create` to track tasks. Use `bd close` to mark them done. Beads is the single source of truth.
